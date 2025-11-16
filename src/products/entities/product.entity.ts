@@ -13,6 +13,7 @@ import {
   ManyToMany,
   JoinTable,
   JoinColumn,
+  DeleteDateColumn,
 } from 'typeorm';
 
 export enum RecyclabilityStatus {
@@ -59,6 +60,9 @@ export class Product {
 
   @Column({ nullable: true })
   imageAltText: string;
+
+  @DeleteDateColumn()
+  deletedAt: Date;
 
   @OneToOne(() => EnvironmentalImpact, (impact) => impact.product, {
     cascade: true,

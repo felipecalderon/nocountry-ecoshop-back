@@ -9,6 +9,7 @@ import {
   OneToMany,
   CreateDateColumn,
   UpdateDateColumn,
+  DeleteDateColumn,
 } from 'typeorm';
 
 export enum UserRole {
@@ -53,6 +54,9 @@ export class User {
   @Column({ default: false })
   emailVerified: boolean;
 
+  @Column({ default: false })
+  isBanned: boolean;
+
   @Column({
     type: 'jsonb',
     nullable: true,
@@ -64,6 +68,9 @@ export class User {
 
   @UpdateDateColumn()
   updatedAt: Date;
+
+  @DeleteDateColumn()
+  deletedAt: Date;
 
   @OneToOne(() => Brand, (brand) => brand.owner)
   brand: Brand;

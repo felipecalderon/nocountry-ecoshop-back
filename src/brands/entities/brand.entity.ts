@@ -7,6 +7,7 @@ import {
   OneToOne,
   OneToMany,
   JoinColumn,
+  DeleteDateColumn,
 } from 'typeorm';
 
 @Entity({ name: 'brands' })
@@ -19,6 +20,9 @@ export class Brand {
 
   @Column({ type: 'text', nullable: true })
   description: string;
+
+  @DeleteDateColumn()
+  deletedAt: Date;
 
   @OneToOne(() => User)
   @JoinColumn({ name: 'owner_id' })
