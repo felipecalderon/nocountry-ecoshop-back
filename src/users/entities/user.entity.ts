@@ -57,12 +57,6 @@ export class User {
   @Column({ default: false })
   isBanned: boolean;
 
-  @Column({
-    type: 'jsonb',
-    nullable: true,
-    comment: 'Almacena IDs de cliente de pasarelas (Stripe, MP, etc.)',
-  })
-  paymentCustomerIds: Record<string, any>;
   @CreateDateColumn()
   createdAt: Date;
 
