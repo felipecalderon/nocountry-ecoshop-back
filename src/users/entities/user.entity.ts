@@ -26,9 +26,6 @@ export class User {
   @Column({ unique: true })
   email: string;
 
-  @Column({ comment: 'Contraseña hasheada con bcrypt' })
-  password: string;
-
   @Column({
     type: 'enum',
     enum: UserRole,
@@ -50,6 +47,20 @@ export class User {
 
   @Column({ type: 'date', nullable: true })
   birthDate: Date;
+
+  @Column({
+    type: 'json',
+    nullable: true,
+    comment: 'Almacena IDs de cliente de pasarelas (Stripe, MP, etc.)',
+  })
+  paymentCustomerIds: Record<string, any>;
+
+  @Column({
+    unique: true,
+    nullable: true,
+    comment: 'ID del proveedor de identidad (Auth0, Firebase sub)',
+  })
+  providerId: string;
 
   @Column({ default: false })
   emailVerified: boolean;
