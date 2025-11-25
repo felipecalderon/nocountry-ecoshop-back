@@ -15,6 +15,7 @@ import {
   JoinColumn,
   DeleteDateColumn,
 } from 'typeorm';
+import { MaterialProduct } from './material-product.entity';
 
 export enum RecyclabilityStatus {
   FULLY_RECYCLABLE = 'FULLY_RECYCLABLE',
@@ -69,10 +70,10 @@ export class Product {
   })
   enviromentalImpact: EnvironmentalImpact;
 
-  @OneToMany(() => MaterialComposition, (material) => material.product, {
+  @OneToMany(() => MaterialProduct, (material) => material.product, {
     cascade: true,
   })
-  materialComposition: MaterialComposition[];
+  materials: MaterialProduct[];
 
   @ManyToOne(() => Brand, (brand) => brand.products)
   @JoinColumn({ name: 'brand_id' })

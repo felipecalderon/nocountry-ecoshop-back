@@ -1,47 +1,24 @@
-import { Product } from './product.entity';
-import {
-  Entity,
-  PrimaryGeneratedColumn,
-  Column,
-  ManyToOne,
-  JoinColumn,
-} from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, OneToMany } from 'typeorm';
+import { MaterialProduct } from './material-product.entity';
 
 @Entity({ name: 'material_compositions' })
 export class MaterialComposition {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column()
-  material: string;
-
-  @Column({
-    type: 'decimal',
-    precision: 5,
-    scale: 2,
-  })
-  percentage: number;
+  @Column({ unique: true }) // Importante: Nombres únicos
+  name: string; // Ej: 'Algodón Orgánico', 'Poliéster Reciclado'
 
   @Column({ default: false })
   isEcoFriendly: boolean;
 
-  @Column({
-    type: 'decimal',
-    precision: 10,
-    scale: 2,
-    default: 0,
-  })
-  carbonFootprint: number;
+  @Column({ type: 'decimal', precision: 10, scale: 2, default: 0 })
+  carbonFootprintPerKg: number; // Especificar la unidad ayuda al cálculo
 
-  @Column({
-    type: 'decimal',
-    precision: 10,
-    scale: 2,
-    default: 0,
-  })
-  waterUsage: number;
+  @Column({ type: 'decimal', precision: 10, scale: 2, default: 0 })
+  waterUsagePerKg: number;
 
-  @ManyToOne(() => Product, (product) => product.materialComposition)
-  @JoinColumn({ name: 'product_id' })
-  product: Product;
+  // Relación inversa: Un material puede estar en muchos 'MaterialProduct'
+  @OneToMany(() => MaterialProduct, (mp) => mp.materialComposition)
+  materialProducts: MaterialProduct[];
 }
