@@ -5,12 +5,14 @@ import { EnvironmentalImpact } from './entities/environmental-impact.entity';
 import { MaterialComposition } from './entities/material-composition.entity';
 import { ProductsService } from './products.service';
 import { ProductsController } from './products.controller';
+import { MaterialProduct } from './entities/material-product.entity';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([
       Product,
       EnvironmentalImpact,
+      MaterialProduct,
       MaterialComposition,
     ]),
   ],
