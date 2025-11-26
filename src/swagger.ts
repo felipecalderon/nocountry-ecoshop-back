@@ -13,7 +13,7 @@ export const swaggerConfig = (app: INestApplication<any>) => {
     .addTag('orders', 'gestion de ordenes')
     .addTag('users', 'gestion de usuarios')
     .addTag('brands', 'gestion de marcas')
-    // .addBearerAuth() //por si usamos auth de JWT
+    .addBearerAuth()
     .build();
 
   const document = SwaggerModule.createDocument(app, config);
