@@ -70,11 +70,11 @@ interface SeedData {
 // CONFIG DE LA DB
 const dataSource = new DataSource({
   type: 'mysql',
-  host: 'switchyard.proxy.rlwy.net',
-  port: 47653,
-  username: 'root',
-  password: 'JzaeOpppGtHvrPKGLAcNrRLBkJHrIANq',
-  database: 'railway',
+  host: process.env.DB_HOST,
+  port: process.env.DB_PORT ? parseInt(process.env.DB_PORT) : 3036,
+  username: process.env.DB_USERNAME,
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_NAME,
   entities: [
     Brand,
     Certification,
@@ -221,6 +221,6 @@ async function runSeed() {
 // npm run seed
 runSeed().catch((error: Error) => {
   console.error('❌ Error durante el seed:', error.message);
-  console.error(error);
+  console.error(error.stack);
   process.exit(1);
 });
