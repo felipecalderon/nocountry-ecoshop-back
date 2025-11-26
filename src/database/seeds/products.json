@@ -1,0 +1,162 @@
+{
+  "brands": [
+    {
+      "name": "Patagonia",
+      "description": "Marca líder en ropa outdoor sostenible comprometida con el medio ambiente"
+    },
+    {
+      "name": "EcoWear",
+      "description": "Moda sostenible y ética para el día a día"
+    },
+    {
+      "name": "GreenTech",
+      "description": "Tecnología ecológica y productos renovables"
+    }
+  ],
+  "certifications": [
+    {
+      "name": "GOTS",
+      "badgeUrl": "https://example.com/gots-badge.png",
+      "description": "Global Organic Textile Standard - Certificación para textiles orgánicos"
+    },
+    {
+      "name": "Fair Trade",
+      "badgeUrl": "https://example.com/gots-badge.png",
+      "description": "Certificación de comercio justo"
+    },
+    {
+      "name": "OEKO-TEX",
+      "badgeUrl": "https://example.com/gots-badge.png",
+      "description": "Certificación de seguridad textil"
+    },
+    {
+      "name": "Energy Star",
+      "badgeUrl": "https://example.com/gots-badge.png",
+      "description": "Certificación de eficiencia energética"
+    },
+    {
+      "name": "Cradle to Cradle",
+      "badgeUrl": "https://example.com/gots-badge.png",
+      "description": "Certificación de diseño circular"
+    }
+  ],
+  "products": [
+    {
+      "slug": "camiseta-algodon-organico-blanca",
+      "name": "Camiseta de Algodón Orgánico Blanca",
+      "image": "https://picsum.photos/seed/camiseta/400/400",
+      "description": "Camiseta básica fabricada con algodón 100% orgánico certificado GOTS. Perfecta para el uso diario con conciencia ambiental.",
+      "price": 29.99,
+      "stock": 150,
+      "sku": "CAM-ORG-BLA-001",
+      "originCountry": "URG",
+      "weightKg": 0.8,
+      "recyclabilityStatus": "FULLY_RECYCLABLE",
+      "imageAltText": "Camiseta blanca de algodón orgánico sobre fondo neutro",
+      "brandName": "EcoWear",
+      "certificationNames": ["GOTS", "Fair Trade", "OEKO-TEX"],
+      "environmentalImpact": {
+        "recycledContent": 0,
+        "ecoBadgeLevel": "HIGH"
+      },
+      "materials": [
+        {
+          "materialComposition": {
+            "name": "Algodón Orgánico",
+            "isEcoFriendly": true,
+            "carbonFootprintPerKg": 5.2,
+            "waterUsagePerKg": 1200
+          },
+          "percentage": 80
+        },
+        {
+          "materialComposition": {
+            "name": "Lana Orgánica",
+            "isEcoFriendly": true,
+            "carbonFootprintPerKg": 5.2,
+            "waterUsagePerKg": 1200
+          },
+          "percentage": 20
+        }
+      ]
+    },
+    {
+      "slug": "pantalon-jeans-reciclado-azul",
+      "name": "Pantalón Jeans de Algodón Reciclado",
+      "image": "https://picsum.photos/seed/jeans/400/400",
+      "description": "Jeans fabricados con 75% algodón reciclado post-consumo y 25% algodón orgánico. Estilo clásico con compromiso ambiental.",
+      "price": 79.99,
+      "stock": 85,
+      "sku": "PAN-JEA-REC-002",
+      "originCountry": "CHL",
+      "weightKg": 1.0,
+      "recyclabilityStatus": "FULLY_RECYCLABLE",
+      "imageAltText": "Pantalón jeans azul de algodón reciclado",
+      "brandName": "EcoWear",
+      "certificationNames": ["GOTS", "Cradle to Cradle"],
+      "environmentalImpact": {
+        "recycledContent": 75,
+        "ecoBadgeLevel": "HIGH"
+      },
+      "materials": [
+        {
+          "materialComposition": {
+            "name": "Algodón Reciclado",
+            "isEcoFriendly": true,
+            "carbonFootprintPerKg": 3.8,
+            "waterUsagePerKg": 800
+          },
+          "percentage": 75
+        },
+        {
+          "materialComposition": {
+            "name": "Algodón Orgánico",
+            "isEcoFriendly": true,
+            "carbonFootprintPerKg": 1.3,
+            "waterUsagePerKg": 300
+          },
+          "percentage": 25
+        }
+      ]
+    },
+    {
+      "slug": "chaqueta-polar-reciclada-azul",
+      "name": "Chaqueta Polar de Poliéster Reciclado",
+      "image": "https://picsum.photos/seed/chaqueta/400/400",
+      "description": "Chaqueta polar fabricada con botellas PET recicladas. Cálida, ligera y perfecta para actividades outdoor.",
+      "price": 119.99,
+      "stock": 60,
+      "sku": "CHA-POL-REC-003",
+      "originCountry": "ARG",
+      "weightKg": 1.5,
+      "recyclabilityStatus": "PARTIALLY_RECYCLABLE",
+      "imageAltText": "Chaqueta polar azul marino de poliéster reciclado",
+      "brandName": "Patagonia",
+      "certificationNames": ["Fair Trade", "OEKO-TEX"],
+      "environmentalImpact": {
+        "recycledContent": 95,
+        "ecoBadgeLevel": "HIGH"
+      },
+      "materials": [
+        {
+          "materialComposition": {
+            "name": "Poliéster Reciclado",
+            "isEcoFriendly": true,
+            "carbonFootprintPerKg": 2.5,
+            "waterUsagePerKg": 150
+          },
+          "percentage": 95
+        },
+        {
+          "materialComposition": {
+            "name": "Elastano",
+            "isEcoFriendly": false,
+            "carbonFootprintPerKg": 0.8,
+            "waterUsagePerKg": 50
+          },
+          "percentage": 5
+        }
+      ]
+    }
+  ]
+}
