@@ -52,6 +52,9 @@ export class Product {
   @Column({ nullable: true })
   originCountry: string;
 
+  @Column({ type: 'decimal', precision: 10, scale: 3, default: 0 })
+  weightKg: number;
+
   @Column({
     type: 'enum',
     enum: RecyclabilityStatus,
@@ -68,7 +71,7 @@ export class Product {
   @OneToOne(() => EnvironmentalImpact, (impact) => impact.product, {
     cascade: true,
   })
-  enviromentalImpact: EnvironmentalImpact;
+  environmentalImpact: EnvironmentalImpact;
 
   @OneToMany(() => MaterialProduct, (material) => material.product, {
     cascade: true,

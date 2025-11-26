@@ -34,7 +34,7 @@ export class EnvironmentalImpact {
   })
   ecoBadgeLevel: EcoBadgeLevel;
 
-  @OneToOne(() => Product, (product) => product.enviromentalImpact)
+  @OneToOne(() => Product, (product) => product.environmentalImpact)
   @JoinColumn({ name: 'product_id' })
   product: Product;
 }
