@@ -21,6 +21,24 @@ export class EnvironmentalImpact {
 
   @Column({
     type: 'decimal',
+    precision: 10,
+    scale: 2,
+    default: 0,
+    comment: 'Huella de carbono total calculada en kg CO2e',
+  })
+  carbonFootprint: number;
+
+  @Column({
+    type: 'decimal',
+    precision: 10,
+    scale: 2,
+    default: 0,
+    comment: 'Uso de agua total calculado en Litros',
+  })
+  waterUsage: number;
+
+  @Column({
+    type: 'decimal',
     precision: 5,
     scale: 2,
     default: 0,

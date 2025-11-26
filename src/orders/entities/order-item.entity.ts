@@ -24,6 +24,14 @@ export class OrderItem {
   })
   priceAtPurchase: number;
 
+  @Column({
+    type: 'decimal',
+    precision: 10,
+    scale: 2,
+    default: 0,
+  })
+  carbonFootprintSnapshot: number;
+
   @ManyToOne(() => Order, (order) => order.items)
   @JoinColumn({ name: 'order_id' })
   order: Order;
