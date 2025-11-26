@@ -1,6 +1,6 @@
 import { Brand } from '../../brands/entities/brand.entity';
 import { Order } from '../../orders/entities/order.entity';
-import { Address } from './address.entity';
+import { Address } from '../../addresses/entities/address.entity';
 import {
   Entity,
   PrimaryGeneratedColumn,

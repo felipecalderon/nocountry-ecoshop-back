@@ -6,6 +6,7 @@ import { OrdersModule } from './orders/orders.module';
 import { CertificationsModule } from './certifications/certifications.module';
 import { DataBaseModule } from './database/database.module';
 import { AuthModule } from './auth/auth.module';
+import { AddressesModule } from './addresses/addresses.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { AuthModule } from './auth/auth.module';
     OrdersModule,
     CertificationsModule,
     AuthModule,
+    AddressesModule,
   ],
   controllers: [],
   providers: [],
