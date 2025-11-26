@@ -34,6 +34,15 @@ export class Order {
   @Column({ type: 'decimal', precision: 10, scale: 2 })
   totalPrice: number;
 
+  @Column({
+    type: 'decimal',
+    precision: 10,
+    scale: 2,
+    default: 0,
+    comment: 'Suma total del impacto de carbono en kgCO2eq',
+  })
+  totalCarbonFootprint: number;
+
   @CreateDateColumn()
   createdAt: Date;
 
