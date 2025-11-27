@@ -14,7 +14,7 @@ import { MaterialComposition } from './entities/material-composition.entity';
 import { Brand } from '../brands/entities/brand.entity';
 import { Certification } from '../certifications/entities/certification.entity';
 
-import { CreateProductDto } from './dto/product.dto';
+import { CreateProductDto, UpdateProductDto } from './dto/product.dto';
 import { MaterialProductDto } from './dto/material-product.dto';
 
 // Tranforma el nombre a minusculas y reemplaza espacios por guiones. El slug
@@ -213,8 +213,153 @@ export class ProductsService {
     }
   }
 
-  async update(id: number, changes: CreateProductDto) {
-    return;
+  async update(id: string, changes: UpdateProductDto): Promise<Product> {
+    const {
+      brandId,
+      certificationIds, // Opcional
+      environmentalImpact, //Opcional
+      materials, //Opcional
+      name,
+      weightKg,
+      ...productDetails
+    } = changes;
+
+    // 1 CONFIG DE TRANSACCIONES DE TYPEORM
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      // 2 BUSCAR EL PRODUCT CON LAS RELACIONES DE IMPACT y MATERIALS
+      const productToUpdate = await this.productRepository.findOne({
+        where: { id },
+        relations: ['environmentalImpact', 'materials'],
+      });
+      if (!productToUpdate) {
+        throw new NotFoundException(`Producto con ID ${id} no encontrado`);
+      }
+
+      // 3 MANEJO DE RELACIONES
+      let brand: Brand | undefined; // el resultado que puede ser brand o null
+      if (brandId) {
+        const foundBrand = await queryRunner.manager.findOne(Brand, {
+          where: { id: brandId },
+        });
+
+        if (!foundBrand) {
+          throw new NotFoundException(`Marca con ID ${brandId} no encontrada`);
+        }
+        brand = foundBrand;
+      }
+
+      let certifications: Certification[] =
+        productToUpdate.certifications || []; // Si no hay cambios nuevos dejamos los viejos
+      if (certificationIds !== undefined) {
+        if (certificationIds.length > 0) {
+          certifications = await queryRunner.manager.findBy(Certification, {
+            id: In(certificationIds),
+          });
+          if (certifications.length !== certificationIds.length) {
+            const foundIds = certifications.map((c) => c.id);
+            const notFoundIds = certificationIds.filter(
+              (certId) => !foundIds.includes(certId),
+            );
+            throw new BadRequestException(
+              `Algunos ID de certificados no son validos o no existen: ${notFoundIds.join(', ')}.`,
+            );
+          }
+        } else {
+          certifications = []; // Si el array de IDs esta vacío limpiamos todas los certif
+        }
+      }
+      // 4 ACTUALIZAR CAMPOS BASE DEL PRODUCT
+      const updatedProduct = this.productRepository.merge(productToUpdate, {
+        ...productDetails,
+        name,
+        weightKg,
+        slug: name ? generateSlug(name) : productToUpdate.slug,
+        sku: name ? generateSku(name) : productToUpdate.sku,
+        brand: brand || productToUpdate.brand, // Actualizar SOLO si brandId fue dado
+        certifications: certifications,
+      });
+
+      const product = await queryRunner.manager.save(Product, updatedProduct);
+
+      let totalCarbonFactor = 0;
+      let totalWaterFactor = 0;
+
+      // 5 MANEJO DE MATERIALES
+      if (materials && materials.length > 0) {
+        // OJO Esto borra fisicamente las entradas en la tabla material_products
+        await queryRunner.manager.delete(MaterialProduct, {
+          product: productToUpdate,
+        });
+
+        // Recrear nuevas relacioes y calcular los factores ambientales
+        const factors = await this.handleMaterialComposition(
+          product,
+          materials,
+          queryRunner,
+        );
+        totalCarbonFactor = factors.totalCarbonFactor;
+        totalWaterFactor = factors.totalWaterFactor;
+      } else {
+        // Si no hay nuevos materiales dejamoslos viejos
+        totalCarbonFactor =
+          productToUpdate.environmentalImpact.carbonFootprint /
+          productToUpdate.weightKg;
+        totalWaterFactor =
+          productToUpdate.environmentalImpact.waterUsage /
+          productToUpdate.weightKg;
+      }
+
+      // 6 ACTUALIZAR IMPACTO AMBIENTAL
+      const finalWeightKg = weightKg ?? productToUpdate.weightKg;
+
+      // Recalculo SOLO si hay materiales o si el peso cambio
+      if (materials || weightKg) {
+        const carbonFootprint = finalWeightKg * totalCarbonFactor;
+        const waterUsage = finalWeightKg * totalWaterFactor;
+        const safeRound = (value: number): number =>
+          Math.round(value * 100) / 100;
+
+        // Actualizar el impacto existente
+        const updatedImpact = this.impactRepository.merge(
+          productToUpdate.environmentalImpact,
+          {
+            ...environmentalImpact, // Aplicar cambios opcinales
+            carbonFootprint: safeRound(carbonFootprint),
+            waterUsage: safeRound(waterUsage),
+          },
+        );
+        await queryRunner.manager.save(EnvironmentalImpact, updatedImpact);
+      }
+
+      // 7 COMMIT Y RETURN
+      await queryRunner.commitTransaction();
+
+      return this.findOne(product.id);
+    } catch (error) {
+      await queryRunner.rollbackTransaction(); // Si hay error manda un rollback
+      if (
+        error instanceof NotFoundException ||
+        error instanceof BadRequestException
+      ) {
+        throw error;
+      }
+      // Errores de duplicados
+      if (error.code === 'ER_DUP_ENTRY') {
+        throw new BadRequestException(
+          'El nombre/slug o el SKU generado esta duplicado',
+        );
+      }
+      throw new InternalServerErrorException(
+        'Ocurrio un error inicial al procesar el product',
+      );
+    } finally {
+      // Cerrar el query runner siempre
+      await queryRunner.release();
+    }
   }
 
   async delete(id: string): Promise<void> {

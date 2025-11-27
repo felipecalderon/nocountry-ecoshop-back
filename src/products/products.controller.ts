@@ -82,7 +82,7 @@ export class ProductsController {
   @ApiOperation({ summary: 'Actualizar un producto por ID' })
   @ApiResponse({ status: 200, description: 'Product updated successfully' })
   update(@Param('id') id: string, @Body() updateProductDto: CreateProductDto) {
-    return this.productsService.update(Number(id), updateProductDto);
+    return this.productsService.update(id, updateProductDto);
   }
 
   @Delete(':id')

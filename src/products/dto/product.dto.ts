@@ -15,36 +15,13 @@ import {
   IsUUID,
 } from 'class-validator';
 import { Type } from 'class-transformer';
+import { PartialType } from '@nestjs/mapped-types';
 
 import { RecyclabilityStatus } from '../entities/product.entity';
 import { EnvironmentalImpactDto } from './environmental-impact.dto';
 import { MaterialProductDto } from './material-product.dto';
 
 export class CreateProductDto {
-  // @ApiProperty({
-  //   description: 'Slug unico del producto',
-  //   example: 'camisa-algodon-organico-blanca o alpha-beta-gamma',
-  //   pattern: '^[a-z0-9]+(?:-[a-z0-9]+)*$', // IMPORTANTE: esto es una expresion regular para letras minusculas, numeros y guiones
-  // })
-  // @IsString()
-  // @IsNotEmpty()
-  // @Matches(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, {
-  //   message: 'El slug debe contener SOLO letras minusculas, numeros y guiones',
-  // })
-  // slug: string;
-
-  // @ApiProperty({
-  //   description: 'SKU unico del producto',
-  //   example: 'CAM-ORG-BLA-M-001',
-  //   minLength: 3,
-  //   maxLength: 50,
-  // })
-  // @IsString()
-  // @IsNotEmpty()
-  // @MinLength(3)
-  // @MaxLength(50)
-  // sku: string;
-
   @ApiProperty({
     description: 'Nombre del producto',
     example: 'Camisa de Algodón Orgánico Blanca',
@@ -179,3 +156,6 @@ export class CreateProductDto {
   })
   certificationIds?: string[]; // manyToMany
 }
+
+//  DTO para la actualización de productos. todos los campos de CreateProductDto pero opcionales.
+export class UpdateProductDto extends PartialType(CreateProductDto) {}
