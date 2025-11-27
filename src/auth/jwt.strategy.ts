@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
@@ -8,33 +8,43 @@ import { passportJwtSecret } from 'jwks-rsa';
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
+  private readonly logger = new Logger(JwtStrategy.name);
+
   constructor(
     private readonly configService: ConfigService,
     private readonly userService: UsersService,
   ) {
-    const secret = configService.get<string>('JWT_SECRET');
-    if (!secret) {
+    const issuerUrl = configService.get<string>('AUTH0_ISSUER_URL');
+    const audience = configService.get<string>('AUTH0_AUDIENCE');
+
+    if (!issuerUrl || !audience) {
       throw new Error(
-        'JWT_SECRET no está definido en las variables de entorno',
+        'Faltan variables de entorno de Auth0 (ISSUER o AUDIENCE)',
       );
     }
+
+    const cleanIssuerUrl = issuerUrl.endsWith('/')
+      ? issuerUrl.slice(0, -1)
+      : issuerUrl;
 
     super({
       secretOrKeyProvider: passportJwtSecret({
         cache: true,
         rateLimit: true,
         jwksRequestsPerMinute: 5,
-        jwksUri: `${configService.get('AUTH0_ISSUER_URL')}.well-known/jwks.json`,
+        jwksUri: `${cleanIssuerUrl}/.well-known/jwks.json`,
       }),
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
-      audience: configService.get('AUTH0_AUDIENCE'),
-      issuer: configService.get('AUTH0_ISSUER_URL'),
+      audience: audience,
+      issuer: issuerUrl,
       algorithms: ['RS256'],
     });
   }
 
   async validate(payload: JwtPayload) {
+    this.logger.debug(`Validando usuario: ${payload.sub}`);
+
     const user = await this.userService.findOrCreateFromProvider(payload);
 
     if (!user) {

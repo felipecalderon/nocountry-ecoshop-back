@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { User } from './entities/user.entity';
 import { Repository } from 'typeorm';
@@ -14,6 +18,12 @@ export class UsersService {
   async findOrCreateFromProvider(payload: JwtPayload): Promise<User> {
     const { sub, email, given_name, family_name } = payload;
 
+    // 🔍 DEBUG: Mira qué está llegando realmente.
+    // Es muy probable que 'email' sea undefined aquí.
+    console.log('Payload de Auth0 recibido:', payload);
+
+    // 1. Buscar por Provider ID (El método más seguro)
+    // El 'sub' SIEMPRE debe venir.
     let user = await this.userRepository.findOne({
       where: { providerId: sub },
     });
@@ -22,10 +32,19 @@ export class UsersService {
       return user;
     }
 
-    user = await this.userRepository.findOne({ where: { email } });
-    if (user) {
-      user.providerId = sub;
-      return await this.userRepository.save(user);
+    if (email) {
+      user = await this.userRepository.findOne({ where: { email } });
+
+      if (user) {
+        user.providerId = sub;
+        return await this.userRepository.save(user);
+      }
+    }
+
+    if (!email) {
+      throw new BadRequestException(
+        'El token de Auth0 no contiene un email. Revisa los scopes del frontend.',
+      );
     }
 
     const newUser = this.userRepository.create({
