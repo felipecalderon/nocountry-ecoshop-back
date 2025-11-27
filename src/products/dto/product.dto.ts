@@ -5,21 +5,20 @@ import {
   IsEnum,
   IsNotEmpty,
   IsOptional,
-  IsUUID,
   IsArray,
   IsUrl,
   MinLength,
   MaxLength,
   Min,
-  Matches,
   ValidateNested,
   ArrayMinSize,
+  IsUUID,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 
 import { RecyclabilityStatus } from '../entities/product.entity';
-import { CreateEnvironmentalImpactDto } from './environmental-impact.dto';
-import { CreateMaterialCompositionDto } from './material-composition.dto';
+import { EnvironmentalImpactDto } from './environmental-impact.dto';
+import { MaterialProductDto } from './material-product.dto';
 
 export class CreateProductDto {
   // @ApiProperty({
@@ -33,6 +32,18 @@ export class CreateProductDto {
   //   message: 'El slug debe contener SOLO letras minusculas, numeros y guiones',
   // })
   // slug: string;
+
+  // @ApiProperty({
+  //   description: 'SKU unico del producto',
+  //   example: 'CAM-ORG-BLA-M-001',
+  //   minLength: 3,
+  //   maxLength: 50,
+  // })
+  // @IsString()
+  // @IsNotEmpty()
+  // @MinLength(3)
+  // @MaxLength(50)
+  // sku: string;
 
   @ApiProperty({
     description: 'Nombre del producto',
@@ -85,18 +96,6 @@ export class CreateProductDto {
   @Type(() => Number)
   stock: number;
 
-  // @ApiProperty({
-  //   description: 'SKU unico del producto',
-  //   example: 'CAM-ORG-BLA-M-001',
-  //   minLength: 3,
-  //   maxLength: 50,
-  // })
-  // @IsString()
-  // @IsNotEmpty()
-  // @MinLength(3)
-  // @MaxLength(50)
-  // sku: string;
-
   @ApiPropertyOptional({
     description: 'Pais de origen del producto',
     example: 'Argentina',
@@ -106,6 +105,16 @@ export class CreateProductDto {
   @IsString()
   @MaxLength(100)
   originCountry?: string;
+
+  @ApiProperty({
+    description: 'Peso del producto en kilogramos',
+    example: 3.2,
+    minimum: 0,
+  })
+  @IsNumber({ maxDecimalPlaces: 3 })
+  @Min(0.0, { message: 'El peso no puede ser negativo' })
+  @Type(() => Number)
+  weightKg: number;
 
   @ApiProperty({
     description: 'Estado de reciclabildad del producto',
@@ -129,36 +138,44 @@ export class CreateProductDto {
 
   @ApiProperty({
     description: 'Impacto ambiental del producto',
-    type: CreateEnvironmentalImpactDto, // import de DTO
+    type: EnvironmentalImpactDto,
   })
   @ValidateNested()
-  @Type(() => CreateEnvironmentalImpactDto)
-  environmentalImpact: CreateEnvironmentalImpactDto;
+  @Type(() => EnvironmentalImpactDto)
+  environmentalImpact: EnvironmentalImpactDto;
 
   @ApiProperty({
     description: 'Composicion de materiales del producto',
-    type: [CreateMaterialCompositionDto], // import DTO
+    type: [MaterialProductDto], // array de MaterialProductDto
     isArray: true,
   })
   @IsArray()
   @ArrayMinSize(1, { message: 'Debe incluir al menos un material' })
-  @ValidateNested()
-  @Type(() => CreateMaterialCompositionDto)
-  materialComposition: CreateMaterialCompositionDto[]; // deberia ser un array de objetos, ya que un producto puede tener varios materiales en diferentes porcentajes
+  @ValidateNested({ each: true })
+  @Type(() => MaterialProductDto)
+  materials: MaterialProductDto[];
 
-  // @ApiPropertyOptional({
-  //   description: 'IDs de las certificaciones del producto',
-  //   type: [String],
-  //   example: [
-  //     '123e4567-e89b-12d3-a456-426614174000',
-  //     '223a456b-78c9-0d1e-2f34-56789ghijk02',
-  //   ],
-  // })
-  // @IsOptional()
-  // @IsArray()
-  // @IsUUID('4', {
-  //   each: true,
-  //   message: 'Cada certificacion debe ser un UUID valido',
-  // })
-  // certificationIds?: string[];
+  @ApiProperty({
+    description: 'ID de la marca a la que pertenece el producto',
+    example: '123e4567-e89b-12d3-a456-426614174000',
+  })
+  @IsUUID('4', { message: 'El brandId debe ser un UUID valido' })
+  @IsNotEmpty()
+  brandId: string; // manyToOne
+
+  @ApiPropertyOptional({
+    description: 'IDs de las certificados del producto',
+    type: [String],
+    example: [
+      '123e4567-e89b-12d3-a456-426614174000',
+      '223a456b-78c9-0d1e-2f34-56789ghijk02',
+    ],
+  })
+  @IsOptional()
+  @IsArray()
+  @IsUUID('4', {
+    each: true,
+    message: 'Cada certificacion debe ser un UUID valido',
+  })
+  certificationIds?: string[]; // manyToMany
 }
