@@ -32,4 +32,7 @@ export class CreateBrandDto {
     message: 'La descripcion no puede exceder 2000 caracteres',
   })
   description?: string;
+
+  @ApiPropertyOptional()
+  logoUrl?: string;
 }

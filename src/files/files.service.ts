@@ -1,11 +1,14 @@
-import { Injectable } from '@nestjs/common';
-import { v2 as cloudinary } from 'cloudinary';
-import { CloudinaryResponse } from './interfaces/cloudinary-response.interface';
+import { BadRequestException, Injectable } from '@nestjs/common';
+import {
+  v2 as cloudinary,
+  UploadApiResponse,
+  UploadApiErrorResponse,
+} from 'cloudinary';
 import * as streamifier from 'streamifier';
 
 @Injectable()
 export class FilesService {
-  uploadImage(file: Express.Multer.File) {
+  uploadImage(file: Express.Multer.File): Promise<UploadApiResponse> {
     return new Promise((resolve, reject) => {
       const upload = cloudinary.uploader.upload_stream(
         {
@@ -17,8 +20,11 @@ export class FilesService {
             { fetch_format: 'auto' },
           ],
         },
-        (error, result) => {
+        (error: UploadApiErrorResponse, result: UploadApiResponse) => {
           if (error) return reject(error);
+          if (!result)
+            return reject(new BadRequestException('Error al subir imagen'));
+
           resolve(result);
         },
       );
