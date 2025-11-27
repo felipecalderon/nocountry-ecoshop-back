@@ -13,7 +13,7 @@ import {
 import { GetUser } from 'src/auth/decorators/get-user.decorator';
 import { UpdateUserDto } from './dto/update-user.dto';
 
-@ApiTags('Usuarios', 'Gestión de usuarios')
+@ApiTags('Usuarios')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
 @Controller('users')

@@ -18,7 +18,7 @@ interface RequestWithRawBody extends Request {
   rawBody: Buffer;
 }
 
-@ApiTags('Pagos', 'Gestión de pagos y transacciones')
+@ApiTags('Pagos')
 @Controller('payments')
 export class PaymentsController {
   constructor(

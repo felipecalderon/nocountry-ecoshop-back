@@ -24,7 +24,7 @@ import { CreateBrandDto } from './dto/create-brand.dto';
 import { GetUser } from 'src/auth/decorators/get-user.decorator';
 import { User } from 'src/users/entities/user.entity';
 
-@ApiTags('Marcas', 'Gestión de marcas')
+@ApiTags('Marcas')
 @Controller('brands')
 export class BrandsController {
   constructor(
