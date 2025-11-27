@@ -71,8 +71,26 @@ export class ProductsService {
     }
   }
 
-  async findOne(id: number) {
-    return;
+  async findOne(term: string): Promise<Product> {
+    const relationsToLoad = [
+      'brand',
+      'environmentalImpact',
+      'certifications',
+      'materials.materialComposition',
+    ];
+
+    // Par buscar cualquiera de los 3 campos
+    const product = await this.productRepository.findOne({
+      where: [{ id: term }, { slug: term }, { sku: term }],
+      relations: relationsToLoad,
+    });
+
+    if (!product) {
+      throw new NotFoundException(
+        `Producto con el termino ${term} no encontrado. usa el UUID, el slug, o el SKU`,
+      );
+    }
+    return product;
   }
 
   async create(createProductDto: CreateProductDto): Promise<Product> {

@@ -37,11 +37,23 @@ export class ProductsController {
     return this.productsService.findAll();
   }
 
-  @Get(':id')
-  @ApiOperation({ summary: 'Obtener producto por ID' })
-  @ApiResponse({ status: 200, description: 'Product retrieved successfully' })
-  findOne(@Param('id') id: string) {
-    return this.productsService.findOne(Number(id));
+  @Get(':term')
+  @ApiOperation({
+    summary: 'Obtiene los detalles de un producto por su ID (UUID), slug o SKU',
+    description:
+      'El parámetro `:term` puede ser cualquiera de los tres identificadores.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Detalles del producto recuperados exitosamente.',
+    type: Product,
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Producto no encontrado.',
+  })
+  findOne(@Param('term') term: string) {
+    return this.productsService.findOne(term);
   }
 
   @Post()
