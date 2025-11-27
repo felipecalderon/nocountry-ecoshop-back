@@ -21,7 +21,7 @@ import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { GetUser } from 'src/auth/decorators/get-user.decorator';
 import { User } from 'src/users/entities/user.entity';
 
-@ApiTags('Direcciones')
+@ApiTags('Direcciones', 'Gestión de direcciones de usuario')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
 @Controller('addresses')

@@ -6,7 +6,7 @@ import { CreateOrderDto } from './dto/create-order.dto';
 import { GetUser } from 'src/auth/decorators/get-user.decorator';
 import { User } from 'src/users/entities/user.entity';
 
-@ApiTags('Órdenes de Compra')
+@ApiTags('Órdenes de Compra', 'Gestión de órdenes')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
 @Controller('orders')
