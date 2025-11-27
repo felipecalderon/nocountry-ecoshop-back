@@ -39,6 +39,9 @@ export class User {
   @Column({ nullable: true })
   lastName: string;
 
+  @Column({ type: 'text', nullable: true })
+  profileImage: string;
+
   @Column({ nullable: true, comment: 'DNI, CUIT, RUT, etc.' })
   nationalId: string;
 

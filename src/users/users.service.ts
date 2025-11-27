@@ -17,7 +17,7 @@ export class UsersService {
 
   async findOrCreateFromProvider(payload: JwtPayload): Promise<User> {
     const namespace = 'https://api.ecoshop.com';
-
+    const picture = payload.picture;
     const email = payload[`${namespace}/email`] || payload.email;
     const firstName = payload[`${namespace}/firstName`] || payload.given_name;
     const lastName = payload[`${namespace}/lastName`] || payload.family_name;
@@ -53,6 +53,7 @@ export class UsersService {
       firstName: firstName,
       lastName: lastName,
       emailVerified: true,
+      profileImage: picture,
     });
 
     return await this.userRepository.save(newUser);
@@ -72,6 +73,12 @@ export class UsersService {
 
     this.userRepository.merge(user, updateUserDto);
 
+    return this.userRepository.save(user);
+  }
+
+  async updateProfileImage(id: string, imageUrl: string): Promise<User> {
+    const user = await this.findOne(id);
+    user.profileImage = imageUrl;
     return this.userRepository.save(user);
   }
 }
