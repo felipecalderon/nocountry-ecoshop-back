@@ -16,14 +16,26 @@ export class UsersService {
   ) {}
 
   async findOrCreateFromProvider(payload: JwtPayload): Promise<User> {
-    const { sub, email, given_name, family_name } = payload;
+    // 1. Definir el Namespace (DEBE ser idéntico al que pusiste en la Action de Auth0)
+    const namespace = 'https://api.ecoshop.com';
 
-    // 🔍 DEBUG: Mira qué está llegando realmente.
-    // Es muy probable que 'email' sea undefined aquí.
-    console.log('Payload de Auth0 recibido:', payload);
+    // 2. Extracción de Datos Prioritaria
+    // Intentamos leer el Custom Claim primero. Si no existe, intentamos el estándar.
+    const email = payload[`${namespace}/email`] || payload.email;
+    const firstName = payload[`${namespace}/firstName`] || payload.given_name;
+    const lastName = payload[`${namespace}/lastName`] || payload.family_name;
+    const sub = payload.sub; // El sub siempre viene estándar
 
-    // 1. Buscar por Provider ID (El método más seguro)
-    // El 'sub' SIEMPRE debe venir.
+    console.log('Payload procesado:', { email, sub, firstName }); // Debug útil
+
+    // 3. Validación de Seguridad (El email es obligatorio)
+    if (!email) {
+      throw new BadRequestException(
+        'El token de Auth0 no contiene un email. Revisa la Action de Auth0.',
+      );
+    }
+
+    // 4. Buscar por ID de Proveedor (Usuario ya registrado y logueado antes)
     let user = await this.userRepository.findOne({
       where: { providerId: sub },
     });
@@ -32,27 +44,27 @@ export class UsersService {
       return user;
     }
 
-    if (email) {
-      user = await this.userRepository.findOne({ where: { email } });
+    // 5. Buscar por Email (Linkeo de cuentas: Usuario existía pero entra con otro método)
+    // Al usar la variable 'email' extraída arriba, ya estamos seguros de que no es undefined
+    user = await this.userRepository.findOne({ where: { email } });
 
-      if (user) {
-        user.providerId = sub;
-        return await this.userRepository.save(user);
-      }
+    if (user) {
+      // Encontramos el email, actualizamos el providerId para la próxima vez
+      user.providerId = sub;
+      // Opcional: Actualizar nombres si estaban vacíos
+      if (!user.firstName && firstName) user.firstName = firstName;
+      if (!user.lastName && lastName) user.lastName = lastName;
+
+      return await this.userRepository.save(user);
     }
 
-    if (!email) {
-      throw new BadRequestException(
-        'El token de Auth0 no contiene un email. Revisa los scopes del frontend.',
-      );
-    }
-
+    // 6. Crear Nuevo Usuario
     const newUser = this.userRepository.create({
       providerId: sub,
       email: email,
-      firstName: given_name,
-      lastName: family_name,
-      emailVerified: true,
+      firstName: firstName,
+      lastName: lastName,
+      emailVerified: true, // Asumimos true ya que viene de un token válido de Auth0
     });
 
     return await this.userRepository.save(newUser);
