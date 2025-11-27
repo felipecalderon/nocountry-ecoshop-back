@@ -49,8 +49,26 @@ export class ProductsService {
     private readonly dataSource: DataSource,
   ) {}
 
-  async findAll() {
-    return;
+  async findAll(): Promise<Product[]> {
+    try {
+      const relationsToLoad = [
+        'brand',
+        'environmentalImpact',
+        'certifications',
+        'materials.materialComposition',
+      ];
+
+      const products = await this.productRepository.find({
+        relations: relationsToLoad,
+        order: { name: 'ASC' }, // Ordenar por nombre
+      });
+
+      return products;
+    } catch (error) {
+      throw new InternalServerErrorException(
+        'Ocurrio un error al buscar los productos.',
+      );
+    }
   }
 
   async findOne(id: number) {
