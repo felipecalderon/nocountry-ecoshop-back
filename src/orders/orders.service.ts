@@ -107,4 +107,19 @@ export class OrdersService {
       order: { createdAt: 'DESC' },
     });
   }
+
+  async markAsPaid(orderId: string) {
+    const order = await this.orderRepository.findOne({
+      where: { id: orderId },
+    });
+
+    if (!order) {
+      return;
+    }
+
+    if (order.status === OrderStatus.PENDING) {
+      order.status = OrderStatus.PAID;
+      await this.orderRepository.save(order);
+    }
+  }
 }
