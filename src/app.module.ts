@@ -8,6 +8,7 @@ import { DataBaseModule } from './database/database.module';
 import { AuthModule } from './auth/auth.module';
 import { AddressesModule } from './addresses/addresses.module';
 import { PaymentsModule } from './payments/payments.module';
+import { FilesModule } from './files/files.module';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { PaymentsModule } from './payments/payments.module';
     AuthModule,
     AddressesModule,
     PaymentsModule,
+    FilesModule,
   ],
   controllers: [],
   providers: [],
