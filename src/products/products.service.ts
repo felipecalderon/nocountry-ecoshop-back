@@ -217,8 +217,14 @@ export class ProductsService {
     return;
   }
 
-  async delete(id: number) {
-    return;
+  async delete(id: string): Promise<void> {
+    const result = await this.productRepository.softDelete(id); // borrado logico de typeorm
+
+    if (result.affected === 0) {
+      throw new NotFoundException(
+        `Producto con ID ${id} no encontrado o ya eliminado.`,
+      );
+    }
   }
 
   // VIVA LA IA --- Manejo de la composicion de materiales y calculo de factores para la creacion del producto

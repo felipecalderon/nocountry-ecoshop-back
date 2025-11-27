@@ -86,9 +86,19 @@ export class ProductsController {
   }
 
   @Delete(':id')
-  @ApiOperation({ summary: 'Eliminar un producto por ID' })
-  @ApiResponse({ status: 200, description: 'Product deleted successfully' })
+  @ApiOperation({
+    summary: 'Realiza un borrado lógico de un producto por su ID (UUID).',
+  })
+  @ApiResponse({
+    status: 200,
+    description:
+      'Borrado lógico exitoso. El producto ya no será visible en las búsquedas estándar.',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Producto no encontrado.',
+  })
   delete(@Param('id') id: string) {
-    return this.productsService.delete(Number(id));
+    return this.productsService.delete(id);
   }
 }
