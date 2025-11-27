@@ -7,6 +7,7 @@ import { CertificationsModule } from './certifications/certifications.module';
 import { DataBaseModule } from './database/database.module';
 import { AuthModule } from './auth/auth.module';
 import { AddressesModule } from './addresses/addresses.module';
+import { PaymentsModule } from './payments/payments.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { AddressesModule } from './addresses/addresses.module';
     CertificationsModule,
     AuthModule,
     AddressesModule,
+    PaymentsModule,
   ],
   controllers: [],
   providers: [],
