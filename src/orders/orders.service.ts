@@ -11,6 +11,7 @@ import { User } from 'src/users/entities/user.entity';
 import { Address } from 'src/addresses/entities/address.entity';
 import { Product } from 'src/products/entities/product.entity';
 import { OrderItem } from './entities/order-item.entity';
+import { ImpactStatsDto } from './dto/impact-stats.dto';
 
 @Injectable()
 export class OrdersService {
@@ -121,5 +122,42 @@ export class OrdersService {
       order.status = OrderStatus.PAID;
       await this.orderRepository.save(order);
     }
+  }
+
+  async getUserImpactStats(userId: string): Promise<ImpactStatsDto> {
+    const { totalCo2, count } = await this.orderRepository
+      .createQueryBuilder('order')
+      .select('SUM(order.totalCarbonFootPrint)', 'totalCo2')
+      .addSelect('COUNT(order.id)', 'count')
+      .where('order.user_id = :userId', { userId })
+      .andWhere('order.status = :status', { status: OrderStatus.PAID })
+      .getRawOne();
+
+    const co2Val = Number(totalCo2) || 0;
+    const ordersCount = Number(count) || 0;
+
+    const trees = Math.floor(co2Val / 21);
+
+    let ecoLevel = 'Semilla';
+    let nextLevelGoal = 10;
+
+    if (co2Val >= 10 && co2Val < 50) {
+      ecoLevel = 'Brote Consciente';
+      nextLevelGoal = 50;
+    } else if (co2Val >= 50 && co2Val < 200) {
+      ecoLevel = 'Guardián del Bosque';
+      nextLevelGoal = 200;
+    } else if (co2Val >= 200) {
+      ecoLevel = 'Héroe Climático';
+      nextLevelGoal = 1000;
+    }
+
+    return {
+      totalOrders: ordersCount,
+      co2SavedKg: Number(co2Val.toFixed(2)),
+      treesEquivalent: trees,
+      ecoLevel,
+      nextLevelGoal,
+    };
   }
 }

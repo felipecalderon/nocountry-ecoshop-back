@@ -9,7 +9,6 @@ export const swaggerConfig = (app: INestApplication<any>) => {
     )
     .setVersion('1.0')
     .addTag('products', 'operaciones relacionadas con productos')
-    .addTag('certifications', 'operaciones de certificaciones')
     .addBearerAuth()
     .build();
 
