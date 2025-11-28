@@ -28,6 +28,8 @@ import { GetUser } from 'src/auth/decorators/get-user.decorator';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { FilesService } from 'src/files/files.service';
+import { OrdersService } from 'src/orders/orders.service';
+import { ImpactStatsDto } from 'src/orders/dto/impact-stats.dto';
 
 @ApiTags('Usuarios')
 @ApiBearerAuth()
@@ -37,6 +39,7 @@ export class UsersController {
   constructor(
     private readonly filesService: FilesService,
     private readonly usersService: UsersService,
+    private readonly ordersService: OrdersService,
   ) {}
 
   @Get('admin-only')
@@ -121,5 +124,14 @@ export class UsersController {
   ) {
     const image = await this.filesService.uploadImage(file);
     return this.usersService.updateProfileImage(user.id, image.secure_url);
+  }
+
+  @Get('dashboard/impact')
+  @ApiOperation({
+    summary: 'Obtener métricas de impacto ambiental del usuario',
+  })
+  @ApiResponse({ status: 200, type: ImpactStatsDto })
+  async getImpactStats(@GetUser() user: User) {
+    return this.ordersService.getUserImpactStats(user.id);
   }
 }
