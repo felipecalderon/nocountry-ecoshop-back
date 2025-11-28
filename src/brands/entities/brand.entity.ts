@@ -18,8 +18,14 @@ export class Brand {
   @Column({ unique: true })
   name: string;
 
+  @Column({ unique: true })
+  slug: string;
+
   @Column({ type: 'text', nullable: true })
   description: string;
+
+  @Column({ nullable: true })
+  logoUrl: string;
 
   @DeleteDateColumn()
   deletedAt: Date;
