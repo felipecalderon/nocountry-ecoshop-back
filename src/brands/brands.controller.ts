@@ -4,7 +4,9 @@ import {
   FileTypeValidator,
   Get,
   MaxFileSizeValidator,
+  Param,
   ParseFilePipe,
+  Patch,
   Post,
   UploadedFile,
   UseGuards,
@@ -15,6 +17,7 @@ import {
   ApiBearerAuth,
   ApiConsumes,
   ApiOperation,
+  ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
 import { FilesService } from 'src/files/files.service';
@@ -22,9 +25,13 @@ import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { CreateBrandDto } from './dto/create-brand.dto';
 import { GetUser } from 'src/auth/decorators/get-user.decorator';
-import { User } from 'src/users/entities/user.entity';
+import { User, UserRole } from 'src/users/entities/user.entity';
+import { RolesGuard } from 'src/auth/guards/roles.guard';
+import { Roles } from 'src/auth/decorators/roles.decorator';
+import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
+import { BrandStatsDto } from './dto/brand-stats.dto';
 
-@ApiTags('Marcas')
+@ApiTags('Marcas (Gestión)')
 @Controller('brands')
 export class BrandsController {
   constructor(
@@ -60,8 +67,55 @@ export class BrandsController {
     return this.brandsService.create(createBrandDto, user);
   }
 
-  @Get()
-  findAll() {
-    return this.brandsService.findAll();
+  @Get('orders')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.BRAND_ADMIN, UserRole.ADMIN)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Ver órdenes que contienen mis productos' })
+  async getMyOrders(@GetUser() user: User) {
+    return this.brandsService.findBrandOrders(user);
+  }
+
+  @Patch('orders/:id/status')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.BRAND_ADMIN, UserRole.ADMIN)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Actualizar estado de envío (ej: SHIPPED)' })
+  async updateOrderStatus(
+    @Param('id') id: string,
+    @Body() updateStatusDto: UpdateOrderStatusDto,
+    @GetUser() user: User,
+  ) {
+    return this.brandsService.updateOrderStatus(
+      id,
+      updateStatusDto.status,
+      user,
+    );
+  }
+
+  @Get('dashboard/stats')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.BRAND_ADMIN, UserRole.ADMIN)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Obtener métricas de negocio de la marca',
+    description:
+      'Devuelve el total de ingresos, unidades vendidas y órdenes recibidas. Calcula solo sobre órdenes PAGADAS.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Métricas calculadas exitosamente.',
+    type: BrandStatsDto,
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'El usuario no tiene una marca asociada.',
+  })
+  @ApiResponse({
+    status: 403,
+    description: 'Acceso denegado (Requiere rol BRAND_ADMIN o ADMIN).',
+  })
+  async getBrandStats(@GetUser() user: User) {
+    return this.brandsService.getBrandStats(user);
   }
 }
