@@ -42,16 +42,6 @@ export class UsersController {
     private readonly ordersService: OrdersService,
   ) {}
 
-  @Get('admin-only')
-  @ApiOperation({ summary: 'Endpoint de prueba para probar Guard de Roles.' })
-  @UseGuards(RolesGuard)
-  @Roles(UserRole.ADMIN)
-  getAdminData() {
-    return {
-      message: 'Si ves esto, las guards de admin funcionan xd',
-    };
-  }
-
   @Get('profile')
   @ApiOperation({ summary: 'Obtener perfil del usuario autenticado' })
   @ApiResponse({
