@@ -1,0 +1,31 @@
+<body>
+    <div style="padding: 40px;">
+        <h1 style="color: #252525;">¡Nueva Venta, {{brandName}}! 🎉</h1>
+        <p>Has recibido un nuevo pedido en la plataforma.</p>
+
+        <table width="100%"
+            style="background-color: #f0fdf4; border: 1px solid #709b53; border-radius: 10px; padding: 20px; margin: 20px 0;">
+            <tr>
+                <td align="center">
+                    <p style="margin: 0; font-size: 14px; color: #638c4a;">GANANCIA ESTIMADA</p>
+                    <strong style="font-size: 24px; color: #166534;">${{totalRevenue}}</strong>
+                </td>
+            </tr>
+        </table>
+
+        <h3>Detalle de productos vendidos:</h3>
+        <ul style="color: #52525b; line-height: 1.6;">
+            {{#each items}}
+            <li>
+                <strong>{{quantity}}x</strong> {{productName}} - ${{price}}
+            </li>
+            {{/each}}
+        </ul>
+
+        <p>Por favor, ingresa a tu panel para gestionar el envío.</p>
+
+        <a href="https://ecoshop-dev.vercel.app/dashboard/brand" class="main-btn">Ir al Panel</a>
+    </div>
+</body>
+
+</html>

@@ -12,6 +12,12 @@ import { Address } from 'src/addresses/entities/address.entity';
 import { Product } from 'src/products/entities/product.entity';
 import { OrderItem } from './entities/order-item.entity';
 import { ImpactStatsDto } from './dto/impact-stats.dto';
+import { EventEmitter2 } from '@nestjs/event-emitter';
+import {
+  BrandSaleEvent,
+  OrderPaidEvent,
+  StockAlertEvent,
+} from 'src/notifications/notifications.service';
 
 @Injectable()
 export class OrdersService {
@@ -19,11 +25,12 @@ export class OrdersService {
     @InjectRepository(Order)
     private readonly orderRepository: Repository<Order>,
     private readonly dataSource: DataSource,
+    private readonly eventEmitter: EventEmitter2,
   ) {}
 
   async create(createOrderDto: CreateOrderDto, user: User) {
     const { addressId, items } = createOrderDto;
-
+    const stockAlerts: StockAlertEvent[] = [];
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
@@ -45,7 +52,7 @@ export class OrdersService {
       for (const itemDto of items) {
         const product = await queryRunner.manager.findOne(Product, {
           where: { id: itemDto.productId },
-          relations: ['environmentalImpact'],
+          relations: ['environmentalImpact', 'brand', 'brand.owner'],
         });
 
         if (!product) {
@@ -74,6 +81,15 @@ export class OrdersService {
 
         product.stock -= itemDto.quantity;
         await queryRunner.manager.save(product);
+
+        if (product.stock === 0 || product.stock <= 5) {
+          stockAlerts.push({
+            email: product.brand.owner.email,
+            brandName: product.brand.name,
+            productName: product.name,
+            stock: product.stock,
+          });
+        }
 
         newOrder.items.push(orderItem);
       }
@@ -109,19 +125,94 @@ export class OrdersService {
     });
   }
 
-  async markAsPaid(orderId: string) {
+  async markAsPaid(orderId: string): Promise<void> {
     const order = await this.orderRepository.findOne({
       where: { id: orderId },
+      relations: ['user'],
     });
 
-    if (!order) {
+    if (!order || order.status !== OrderStatus.PENDING) {
       return;
     }
 
-    if (order.status === OrderStatus.PENDING) {
-      order.status = OrderStatus.PAID;
-      await this.orderRepository.save(order);
+    order.status = OrderStatus.PAID;
+    await this.orderRepository.save(order);
+
+    this.notifyUserSuccess(order);
+
+    await this.notifyBrandsOfSale(orderId);
+  }
+
+  private notifyUserSuccess(order: Order): void {
+    const eventPayload: OrderPaidEvent = {
+      orderId: order.id,
+      email: order.user.email,
+      name: order.user.firstName || 'Eco-Amigo',
+      totalPrice: Number(order.totalPrice),
+      co2Saved: Number(order.totalCarbonFootprint),
+    };
+
+    this.eventEmitter.emit('order.paid', eventPayload);
+  }
+
+  private async notifyBrandsOfSale(orderId: string): Promise<void> {
+    const fullOrder = await this.orderRepository.findOne({
+      where: { id: orderId },
+      relations: [
+        'items',
+        'items.product',
+        'items.product.brand',
+        'items.product.brand.owner',
+      ],
+    });
+
+    if (!fullOrder) return;
+
+    const brandGroups = this.groupItemsByBrand(fullOrder);
+
+    for (const group of brandGroups.values()) {
+      this.eventEmitter.emit('brand.sale', group);
     }
+  }
+
+  private groupItemsByBrand(order: Order): Map<string, BrandSaleEvent> {
+    const groups = new Map<string, BrandSaleEvent>();
+
+    for (const item of order.items) {
+      const brand = item.product.brand;
+      const brandId = brand.id;
+
+      if (!groups.has(brandId)) {
+        groups.set(brandId, {
+          email: brand.owner.email,
+          brandName: brand.name,
+          items: [],
+          totalRevenue: 0,
+        });
+      }
+
+      let group = groups.get(brandId);
+
+      if (!group) {
+        group = {
+          email: brand.owner.email,
+          brandName: brand.name,
+          items: [],
+          totalRevenue: 0,
+        };
+        groups.set(brandId, group);
+      }
+
+      group.items.push({
+        productName: item.product.name,
+        quantity: item.quantity,
+        price: Number(item.priceAtPurchase),
+      });
+
+      group.totalRevenue += Number(item.priceAtPurchase) * item.quantity;
+    }
+
+    return groups;
   }
 
   async getUserImpactStats(userId: string): Promise<ImpactStatsDto> {
