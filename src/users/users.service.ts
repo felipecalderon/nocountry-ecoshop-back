@@ -8,16 +8,19 @@ import { User } from './entities/user.entity';
 import { Repository } from 'typeorm';
 import { JwtPayload } from 'src/auth/interfaces/jwt-payload.interface';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { EventEmitter2 } from '@nestjs/event-emitter';
+import { UserRegisteredEvent } from 'src/notifications/notifications.service';
 
 @Injectable()
 export class UsersService {
   constructor(
     @InjectRepository(User) private readonly userRepository: Repository<User>,
+    private readonly eventEmitter: EventEmitter2,
   ) {}
 
   async findOrCreateFromProvider(payload: JwtPayload): Promise<User> {
     const namespace = 'https://api.ecoshop.com';
-    const picture = payload.picture;
+    const picture = payload[`${namespace}/picture`] || payload.picture;
     const email = payload[`${namespace}/email`] || payload.email;
     const firstName = payload[`${namespace}/firstName`] || payload.given_name;
     const lastName = payload[`${namespace}/lastName`] || payload.family_name;
@@ -43,7 +46,6 @@ export class UsersService {
       user.providerId = sub;
       if (!user.firstName && firstName) user.firstName = firstName;
       if (!user.lastName && lastName) user.lastName = lastName;
-
       return await this.userRepository.save(user);
     }
 
@@ -56,7 +58,15 @@ export class UsersService {
       profileImage: picture,
     });
 
-    return await this.userRepository.save(newUser);
+    const savedUser = await this.userRepository.save(newUser);
+
+    const eventPayload: UserRegisteredEvent = {
+      email: savedUser.email,
+      name: savedUser.firstName || 'Eco-Amigo',
+    };
+    this.eventEmitter.emit('user.registered', eventPayload);
+
+    return savedUser;
   }
 
   async findOne(id: string): Promise<User> {
