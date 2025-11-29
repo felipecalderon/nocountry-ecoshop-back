@@ -20,7 +20,7 @@ export class UsersService {
 
   async findOrCreateFromProvider(payload: JwtPayload): Promise<User> {
     const namespace = 'https://api.ecoshop.com';
-    const picture = payload.picture;
+    const picture = payload[`${namespace}/picture`] || payload.picture;
     const email = payload[`${namespace}/email`] || payload.email;
     const firstName = payload[`${namespace}/firstName`] || payload.given_name;
     const lastName = payload[`${namespace}/lastName`] || payload.family_name;
