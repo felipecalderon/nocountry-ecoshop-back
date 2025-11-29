@@ -9,6 +9,9 @@ import { AuthModule } from './auth/auth.module';
 import { AddressesModule } from './addresses/addresses.module';
 import { PaymentsModule } from './payments/payments.module';
 import { FilesModule } from './files/files.module';
+import { ConfigModule } from '@nestjs/config';
+import { EventEmitterModule } from '@nestjs/event-emitter';
+import { NotificationsModule } from './notifications/notifications.module';
 
 @Module({
   imports: [
@@ -22,6 +25,9 @@ import { FilesModule } from './files/files.module';
     AddressesModule,
     PaymentsModule,
     FilesModule,
+    ConfigModule.forRoot({ isGlobal: true }),
+    EventEmitterModule.forRoot(),
+    NotificationsModule,
   ],
   controllers: [],
   providers: [],

@@ -10,6 +10,8 @@ import { Repository } from 'typeorm';
 import { CreateBrandDto } from './dto/create-brand.dto';
 import { User } from 'src/users/entities/user.entity';
 import { Order, OrderStatus } from 'src/orders/entities/order.entity';
+import { EventEmitter2 } from '@nestjs/event-emitter';
+import { OrderShippedEvent } from 'src/notifications/notifications.service';
 
 @Injectable()
 export class BrandsService {
@@ -18,6 +20,7 @@ export class BrandsService {
     private readonly brandRepository: Repository<Brand>,
     @InjectRepository(Order)
     private readonly orderRepository: Repository<Order>,
+    private readonly eventEmitter: EventEmitter2,
   ) {}
 
   async create(createBrandDto: CreateBrandDto, user: User) {
@@ -79,6 +82,7 @@ export class BrandsService {
 
     const order = await this.orderRepository
       .createQueryBuilder('order')
+      .leftJoinAndSelect('order.user', 'user')
       .innerJoin('order.items', 'item')
       .innerJoin('item.product', 'product')
       .where('order.id = :orderId', { orderId })
@@ -92,7 +96,18 @@ export class BrandsService {
     }
 
     order.status = status;
-    return this.orderRepository.save(order);
+    const savedOrder = await this.orderRepository.save(order);
+
+    if (status === OrderStatus.SHIPPED) {
+      const event: OrderShippedEvent = {
+        email: order.user.email,
+        name: order.user.firstName,
+        orderId: order.id,
+      };
+      this.eventEmitter.emit('order.shipped', event);
+    }
+
+    return savedOrder;
   }
 
   async getBrandStats(user: User) {
