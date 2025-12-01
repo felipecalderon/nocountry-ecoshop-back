@@ -5,6 +5,7 @@ import {
   Param,
   ParseUUIDPipe,
   Patch,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import { AdminService } from './admin.service';
@@ -22,6 +23,7 @@ import {
 import { AdminStatsDto } from './dto/admin-stats.dto';
 import { BanUserDto } from './dto/ban-user.dto';
 import { GetUser } from 'src/auth/decorators/get-user.decorator';
+import { PaginationDto } from './dto/pagination.dto';
 
 @ApiTags('Admin Dashboard')
 @ApiBearerAuth()
@@ -68,5 +70,19 @@ export class AdminController {
     @GetUser() admin: User,
   ) {
     return this.adminService.toggleUserBan(id, banUserDto, admin.id);
+  }
+
+  @Get('users')
+  @ApiOperation({
+    summary: 'Listar todos los usuarios (Paginado)',
+    description:
+      'Devuelve la lista de usuarios registrados con sus datos básicos. Usa ?page=1&limit=10.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Lista retornada correctamente con metadatos.',
+  })
+  async findAllUsers(@Query() paginationDto: PaginationDto) {
+    return this.adminService.findAllUsers(paginationDto);
   }
 }

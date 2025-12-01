@@ -9,6 +9,7 @@ import { Order, OrderStatus } from 'src/orders/entities/order.entity';
 import { User } from 'src/users/entities/user.entity';
 import { AdminStatsDto } from './dto/admin-stats.dto';
 import { BanUserDto } from './dto/ban-user.dto';
+import { PaginationDto } from './dto/pagination.dto';
 
 @Injectable()
 export class AdminService {
@@ -58,5 +59,49 @@ export class AdminService {
     user.isBanned = banUserDto.isBanned;
 
     return this.userRepository.save(user);
+  }
+
+  async findAllUsers(paginationDto: PaginationDto) {
+    const { page = 1, limit = 10 } = paginationDto;
+    const skip = (page - 1) * limit;
+
+    const [users, total] = await this.userRepository.findAndCount({
+      skip,
+      take: limit,
+      order: { createdAt: 'DESC' },
+      select: [
+        'id',
+        'email',
+        'firstName',
+        'lastName',
+        'role',
+        'isBanned',
+        'createdAt',
+        'providerId',
+      ],
+    });
+
+    return {
+      data: users,
+      meta: {
+        total,
+        page,
+        lastPage: Math.ceil(total / limit),
+      },
+    };
+  }
+
+  @Get('users')
+  @ApiOperation({
+    summary: 'Listar todos los usuarios (Paginado)',
+    description:
+      'Devuelve la lista de usuarios registrados con sus datos básicos. Usa ?page=1&limit=10.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Lista retornada correctamente con metadatos.',
+  })
+  async findAllUsers(@Query() paginationDto: PaginationDto) {
+    return this.adminService.findAllUsers(paginationDto);
   }
 }
