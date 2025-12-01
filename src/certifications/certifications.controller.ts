@@ -15,9 +15,9 @@ import { CreateCertificationDto } from './dto/create-certification.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { FilesService } from 'src/files/files.service';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
-import { RolesGuard } from 'src/auth/guards/roles.guard'; // Asegúrate de tener este guard
+import { RolesGuard } from 'src/auth/guards/roles.guard';
 import { Roles } from 'src/auth/decorators/roles.decorator';
-import { UserRole } from 'src/users/entities/user.entity'; // Tu enum de roles
+import { UserRole } from 'src/users/entities/user.entity';
 import {
   ApiBearerAuth,
   ApiConsumes,
@@ -56,8 +56,8 @@ export class CertificationsController {
     @UploadedFile(
       new ParseFilePipe({
         validators: [
-          new MaxFileSizeValidator({ maxSize: 1024 * 1024 * 2 }), // 2MB
-          new FileTypeValidator({ fileType: /(jpg|jpeg|png|webp|svg)$/ }), // Admitimos SVG para iconos
+          new MaxFileSizeValidator({ maxSize: 1024 * 1024 * 2 }),
+          new FileTypeValidator({ fileType: /(jpg|jpeg|png|webp|svg)$/ }),
         ],
       }),
     )
