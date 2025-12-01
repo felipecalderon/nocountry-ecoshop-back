@@ -22,7 +22,7 @@ import { UpdateMaterialCompositionDto } from './dto/update-material-composition.
 export class ProductsController {
   constructor(private readonly productsService: ProductsService) {}
 
-  @Post()
+  @Post('material-compositions')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
   @ApiBearerAuth()
@@ -31,19 +31,19 @@ export class ProductsController {
     return this.productsService.create(createDto);
   }
 
-  @Get()
+  @Get('material-compositions')
   @ApiOperation({ summary: 'Listar todos los materiales' })
   findAll() {
     return this.productsService.findAll();
   }
 
-  @Get(':id')
+  @Get('material-compositions/:id')
   @ApiOperation({ summary: 'Obtener un material por ID' })
   findOne(@Param('id', ParseUUIDPipe) id: string) {
     return this.productsService.findOne(id);
   }
 
-  @Patch(':id')
+  @Patch('material-compositions/:id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
   @ApiBearerAuth()
@@ -55,7 +55,7 @@ export class ProductsController {
     return this.productsService.update(id, updateDto);
   }
 
-  @Delete(':id')
+  @Delete('material-compositions/:id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
   @ApiBearerAuth()
