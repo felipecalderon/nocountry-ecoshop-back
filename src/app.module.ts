@@ -16,6 +16,7 @@ import { AdminModule } from './admin/admin.module';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
 import { APP_INTERCEPTOR } from '@nestjs/core';
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
+import { MaterialCompositionModule } from './material-composition/material-composition.module';
 
 @Module({
   imports: [
@@ -33,6 +34,7 @@ import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
     EventEmitterModule.forRoot(),
     NotificationsModule,
     AdminModule,
+    MaterialCompositionModule,
   ],
   controllers: [],
   providers: [

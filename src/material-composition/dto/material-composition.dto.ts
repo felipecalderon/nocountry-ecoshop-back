@@ -10,7 +10,7 @@ import {
   IsOptional,
 } from 'class-validator';
 
-export class MaterialCompositionDto {
+export class CreateMaterialCompositionDto {
   @ApiProperty({
     description: 'Nombre del material (Debe ser único)',
     example: 'Algodón Orgánico',
