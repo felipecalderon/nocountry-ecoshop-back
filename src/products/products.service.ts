@@ -1,6 +1,3 @@
-<<<<<<< HEAD
-import { Injectable } from '@nestjs/common';
-=======
 import {
   BadRequestException,
   Injectable,
@@ -12,15 +9,11 @@ import { DataSource, Repository, In } from 'typeorm';
 import { Product } from './entities/product.entity';
 import { EnvironmentalImpact } from './entities/environmental-impact.entity';
 import { MaterialProduct } from './entities/material-product.entity';
-import { MaterialComposition } from './entities/material-composition.entity';
 import { Brand } from '../brands/entities/brand.entity';
 import { Certification } from '../certifications/entities/certification.entity';
 import { CreateProductDto, UpdateProductDto } from './dto/product.dto';
 import { MaterialProductDto } from './dto/material-product.dto';
-import { MaterialComposition } from './entities/material-composition.entity';
-import { CreateMaterialCompositionDto } from './dto/material-composition.dto';
-import { UpdateMaterialCompositionDto } from './dto/update-material-composition.dto';
->>>>>>> 45d0ce2c311ad65ba2bcea9d32d62e51d4fc221f
+import { MaterialComposition } from 'src/material-composition/entities/material-composition.entity';
 
 // Tranforma el nombre a minusculas y reemplaza espacios por guiones. El slug
 function generateSlug(name: string): string {
@@ -34,13 +27,8 @@ function generateSku(name: string): string {
 
   return `${prefix}-${timestamp}`;
 }
-  NotFoundException,
-} from '@nestjs/common';
 
 @Injectable()
-<<<<<<< HEAD
-export class ProductsService {}
-=======
 export class ProductsService {
   constructor(
     @InjectRepository(Product)
@@ -431,47 +419,5 @@ export class ProductsService {
     await queryRunner.manager.save(MaterialProduct, materialProductsToSave);
 
     return { totalCarbonFactor, totalWaterFactor };
-    @InjectRepository(MaterialComposition)
-    private readonly materialRepository: Repository<MaterialComposition>,
-  ) {}
-
-  async create(createMaterialDto: CreateMaterialCompositionDto) {
-    const existing = await this.materialRepository.findOne({
-      where: { name: createMaterialDto.name },
-    });
-
-    if (existing) {
-      throw new BadRequestException('Ya existe un material con este nombre.');
-    }
-
-    const material = this.materialRepository.create(createMaterialDto);
-    return await this.materialRepository.save(material);
-  }
-
-  async findAll() {
-    return await this.materialRepository.find({
-      order: { name: 'ASC' },
-    });
-  }
-
-  async findOne(id: string) {
-    const material = await this.materialRepository.findOne({ where: { id } });
-    if (!material)
-      throw new NotFoundException(`Material con ID ${id} no encontrado`);
-    return material;
-  }
-
-  async update(id: string, updateMaterialDto: UpdateMaterialCompositionDto) {
-    const material = await this.findOne(id);
-
-    this.materialRepository.merge(material, updateMaterialDto);
-
-    return await this.materialRepository.save(material);
-  }
-
-  async remove(id: string) {
-    const material = await this.findOne(id);
-    return await this.materialRepository.remove(material);
   }
 }
->>>>>>> 45d0ce2c311ad65ba2bcea9d32d62e51d4fc221f
