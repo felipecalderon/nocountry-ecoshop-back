@@ -46,7 +46,14 @@ export class BrandsService {
   }
 
   async findAll() {
-    return this.brandRepository.find({
+    return await this.brandRepository.find({
+      relations: ['owner', 'products'],
+    });
+  }
+
+  async findOne(id: string) {
+    return await this.brandRepository.findOne({
+      where: { id },
       relations: ['owner', 'products'],
     });
   }

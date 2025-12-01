@@ -67,6 +67,15 @@ export class BrandsController {
     return this.brandsService.create(createBrandDto, user);
   }
 
+  @Get()
+  @UseGuards(JwtAuthGuard)
+  @Roles(UserRole.BRAND_ADMIN, UserRole.ADMIN)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Ver datos de la marca del usuario' })
+  async findMyBrand(@GetUser() user: User) {
+    return this.brandsService.findOne(user.id);
+  }
+
   @Get('orders')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.BRAND_ADMIN, UserRole.ADMIN)
