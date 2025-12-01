@@ -18,6 +18,7 @@ import { MaterialComposition } from 'src/material-composition/entities/material-
       MaterialComposition,
       Brand,
       Certification,
+      MaterialComposition,
     ]),
   ],
   controllers: [ProductsController],
