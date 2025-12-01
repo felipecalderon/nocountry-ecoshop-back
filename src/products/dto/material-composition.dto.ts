@@ -1,19 +1,19 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty } from '@nestjs/swagger';
 import {
   IsString,
   IsNumber,
   IsBoolean,
-  MaxLength,
-  MinLength,
-  Min,
   IsNotEmpty,
+  MinLength,
+  MaxLength,
+  Min,
+  IsOptional,
 } from 'class-validator';
-import { Type } from 'class-transformer';
 
 export class MaterialCompositionDto {
   @ApiProperty({
-    description: 'Nombre del material',
-    example: 'Algodon organico',
+    description: 'Nombre del material (Debe ser único)',
+    example: 'Algodón Orgánico',
     minLength: 2,
     maxLength: 100,
   })
@@ -24,31 +24,31 @@ export class MaterialCompositionDto {
   name: string;
 
   @ApiProperty({
-    description: 'Indica si el material es ecologico',
+    description: 'Indica si el material es considerado ecológico',
     example: true,
     default: false,
   })
   @IsBoolean()
-  @Type(() => Boolean)
-  isEcoFriendly: boolean;
+  @IsOptional()
+  isEcoFriendly?: boolean;
 
   @ApiProperty({
-    description: 'Huella de carbono del material', // (kg CO2)
-    example: 12.35,
+    description: 'Huella de carbono por Kg de material (kg CO2e)',
+    example: 3.5,
     minimum: 0,
   })
-  @IsNumber({ maxDecimalPlaces: 2 })
+  @IsNumber({ maxDecimalPlaces: 3 })
   @Min(0)
-  @Type(() => Number)
+  @IsNotEmpty()
   carbonFootprintPerKg: number;
 
   @ApiProperty({
-    description: 'Uso de agua del material (litros)',
+    description: 'Uso de agua por Kg de material (litros)',
     example: 2500.5,
     minimum: 0,
   })
   @IsNumber({ maxDecimalPlaces: 2 })
   @Min(0)
-  @Type(() => Number)
+  @IsNotEmpty()
   waterUsagePerKg: number;
 }

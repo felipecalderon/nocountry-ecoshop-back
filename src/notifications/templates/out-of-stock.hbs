@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <style>
+        body {
+            font-family: sans-serif;
+            color: #252525;
+            background-color: #f4f4f5;
+        }
+
+        .container {
+            background-color: #fff;
+            border-radius: 10px;
+            padding: 40px;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .alert-box {
+            background-color: #fef2f2;
+            border: 1px solid #ef4444;
+            color: #991b1b;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 12px 24px;
+            background-color: #ef4444;
+            color: #fff;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h2 style="color: #dc2626;">🚨 PRODUCTO AGOTADO</h2>
+        <p>Hola {{brandName}},</p>
+        <p>Atención: El producto <strong>{{productName}}</strong> se ha quedado sin stock tras la última venta.</p>
+
+        <div class="alert-box">
+            <p style="margin: 0; font-size: 14px; text-transform: uppercase; font-weight: bold;">Stock Actual</p>
+            <p style="margin: 5px 0 0 0; font-size: 32px; font-weight: bold;">0</p>
+        </div>
+
+        <p>Este producto ya no aparece disponible para compra. Actualiza el stock urgentemente.</p>
+
+        <div style="text-align: center; margin-top: 30px;">
+            <a href="https://ecoshop-dev.vercel.app/dashboard/products" class="btn">Reponer Ahora</a>
+        </div>
+    </div>
+</body>
+
+</html>
