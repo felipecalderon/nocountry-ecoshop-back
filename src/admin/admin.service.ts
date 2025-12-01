@@ -1,9 +1,14 @@
-import { Injectable } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Order, OrderStatus } from 'src/orders/entities/order.entity';
 import { User } from 'src/users/entities/user.entity';
 import { AdminStatsDto } from './dto/admin-stats.dto';
+import { BanUserDto } from './dto/ban-user.dto';
 
 @Injectable()
 export class AdminService {
@@ -31,5 +36,27 @@ export class AdminService {
       totalCo2Saved: Number(orderStats.totalCo2Saved) || 0,
       totalUsers: totalUsers || 0,
     };
+  }
+
+  async toggleUserBan(
+    userId: string,
+    banUserDto: BanUserDto,
+    adminId: string,
+  ): Promise<User> {
+    if (userId === adminId) {
+      throw new ConflictException(
+        'No puedes banear tu propia cuenta de administrador.',
+      );
+    }
+
+    const user = await this.userRepository.findOne({ where: { id: userId } });
+
+    if (!user) {
+      throw new NotFoundException(`Usuario con ID ${userId} no encontrado.`);
+    }
+
+    user.isBanned = banUserDto.isBanned;
+
+    return this.userRepository.save(user);
   }
 }
