@@ -6,16 +6,14 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository, In } from 'typeorm';
-
 import { Product } from './entities/product.entity';
 import { EnvironmentalImpact } from './entities/environmental-impact.entity';
 import { MaterialProduct } from './entities/material-product.entity';
-import { MaterialComposition } from './entities/material-composition.entity';
 import { Brand } from '../brands/entities/brand.entity';
 import { Certification } from '../certifications/entities/certification.entity';
-
 import { CreateProductDto, UpdateProductDto } from './dto/product.dto';
 import { MaterialProductDto } from './dto/material-product.dto';
+import { MaterialComposition } from 'src/material-composition/entities/material-composition.entity';
 
 // Tranforma el nombre a minusculas y reemplaza espacios por guiones. El slug
 function generateSlug(name: string): string {

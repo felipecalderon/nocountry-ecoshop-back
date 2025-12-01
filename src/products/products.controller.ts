@@ -1,19 +1,19 @@
 import {
-  Controller,
-  Get,
-  Post,
-  Patch,
-  Delete,
   Body,
+  Controller,
+  Delete,
+  Get,
   Param,
+  ParseUUIDPipe,
+  Patch,
+  Post,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { ProductsService } from './products.service';
-import { CreateProductDto } from './dto/product.dto';
 import { Product } from './entities/product.entity';
+import { CreateProductDto } from './dto/product.dto';
 
 @ApiTags('products')
-@Controller('products')
 @Controller('products')
 export class ProductsController {
   constructor(private readonly productsService: ProductsService) {}
@@ -98,7 +98,7 @@ export class ProductsController {
     status: 404,
     description: 'Producto no encontrado.',
   })
-  delete(@Param('id') id: string) {
+  remove(@Param('id', ParseUUIDPipe) id: string) {
     return this.productsService.delete(id);
   }
 }

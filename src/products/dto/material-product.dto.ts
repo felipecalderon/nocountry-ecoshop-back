@@ -1,7 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsNumber, Min, Max, IsUUID, IsNotEmpty } from 'class-validator';
 import { Type } from 'class-transformer';
-import { MaterialCompositionDto } from './material-composition.dto';
 
 export class MaterialProductDto {
   @ApiProperty({
