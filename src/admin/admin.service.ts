@@ -90,18 +90,4 @@ export class AdminService {
       },
     };
   }
-
-  @Get('users')
-  @ApiOperation({
-    summary: 'Listar todos los usuarios (Paginado)',
-    description:
-      'Devuelve la lista de usuarios registrados con sus datos básicos. Usa ?page=1&limit=10.',
-  })
-  @ApiResponse({
-    status: 200,
-    description: 'Lista retornada correctamente con metadatos.',
-  })
-  async findAllUsers(@Query() paginationDto: PaginationDto) {
-    return this.adminService.findAllUsers(paginationDto);
-  }
 }
