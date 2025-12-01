@@ -19,7 +19,7 @@ import { Type } from 'class-transformer';
 
 import { RecyclabilityStatus } from '../entities/product.entity';
 import { CreateEnvironmentalImpactDto } from './environmental-impact.dto';
-import { CreateMaterialCompositionDto } from './material-composition.dto';
+import { CreateMaterialCompositionDto } from '../../material-composition/dto/material-composition.dto';
 
 export class CreateProductDto {
   // @ApiProperty({

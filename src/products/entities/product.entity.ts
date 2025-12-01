@@ -1,5 +1,5 @@
 import { EnvironmentalImpact } from './environmental-impact.entity';
-import { MaterialComposition } from './material-composition.entity';
+import { MaterialComposition } from '../../material-composition/entities/material-composition.entity';
 import { Brand } from '../../brands/entities/brand.entity';
 import { Certification } from '../../certifications/entities/certification.entity';
 import { OrderItem } from '../../orders/entities/order-item.entity';

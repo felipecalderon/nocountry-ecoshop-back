@@ -1,5 +1,5 @@
 import { Entity, PrimaryGeneratedColumn, Column, OneToMany } from 'typeorm';
-import { MaterialProduct } from './material-product.entity';
+import { MaterialProduct } from '../../products/entities/material-product.entity';
 
 @Entity({ name: 'material_compositions' })
 export class MaterialComposition {

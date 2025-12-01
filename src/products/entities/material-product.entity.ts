@@ -6,7 +6,7 @@ import {
   PrimaryGeneratedColumn,
 } from 'typeorm';
 import { Product } from './product.entity';
-import { MaterialComposition } from './material-composition.entity';
+import { MaterialComposition } from '../../material-composition/entities/material-composition.entity';
 
 @Entity({ name: 'material_products' })
 export class MaterialProduct {
