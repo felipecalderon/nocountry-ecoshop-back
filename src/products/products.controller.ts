@@ -98,7 +98,7 @@ export class ProductsController {
     status: 404,
     description: 'Producto no encontrado.',
   })
-  remove(@Param('id', ParseUUIDPipe) id: string) {
+  delete(@Param('id', ParseUUIDPipe) id: string) {
     return this.productsService.delete(id);
   }
 }

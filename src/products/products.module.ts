@@ -15,7 +15,6 @@ import { MaterialComposition } from 'src/material-composition/entities/material-
       Product,
       EnvironmentalImpact,
       MaterialProduct,
-      MaterialComposition,
       Brand,
       Certification,
       MaterialComposition,
