@@ -17,6 +17,7 @@ import { TransformInterceptor } from './common/interceptors/transform.intercepto
 import { APP_INTERCEPTOR } from '@nestjs/core';
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
 import { MaterialCompositionModule } from './material-composition/material-composition.module';
+import { WalletModule } from './wallet/wallet.module';
 
 @Module({
   imports: [
@@ -35,6 +36,7 @@ import { MaterialCompositionModule } from './material-composition/material-compo
     NotificationsModule,
     AdminModule,
     MaterialCompositionModule,
+    WalletModule,
   ],
   controllers: [],
   providers: [
