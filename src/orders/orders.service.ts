@@ -18,6 +18,7 @@ import {
   OrderPaidEvent,
   StockAlertEvent,
 } from 'src/notifications/notifications.service';
+import { OrderPaidWalletEvent } from 'src/wallet/listeners/order-paid.event';
 
 @Injectable()
 export class OrdersService {
@@ -138,9 +139,19 @@ export class OrdersService {
     order.status = OrderStatus.PAID;
     await this.orderRepository.save(order);
 
-    this.notifyUserSuccess(order);
+    await this.notifyUserSuccess(order);
 
     await this.notifyBrandsOfSale(orderId);
+
+    const walletEvent = new OrderPaidWalletEvent();
+    walletEvent.orderId = order.id;
+    walletEvent.userId = order.user.id;
+
+    walletEvent.totalAmount = order.totalPrice;
+
+    walletEvent.totalCo2Saved = order.totalCarbonFootprint || 0;
+
+    this.eventEmitter.emit('order.paid', walletEvent);
   }
 
   private notifyUserSuccess(order: Order): void {
