@@ -127,31 +127,44 @@ export class OrdersService {
   }
 
   async markAsPaid(orderId: string): Promise<void> {
+    console.log(`🔍 Intentando marcar orden ${orderId} como pagada...`); // <--- LOG 1: Entrada
+
     const order = await this.orderRepository.findOne({
       where: { id: orderId },
       relations: ['user'],
     });
 
-    if (!order || order.status !== OrderStatus.PENDING) {
+    // Validar si existe la orden y ver su estado actual en el log
+    if (!order) {
+      console.log('❌ Orden no encontrada');
       return;
     }
 
-    order.status = OrderStatus.PAID;
-    await this.orderRepository.save(order);
+    console.log(`Estado actual de la orden: ${order.status}`); // <--- LOG 2: Estado real
 
-    await this.notifyUserSuccess(order);
+    // Aquí está el sospechoso:
+    if (order.status !== OrderStatus.PENDING) {
+      console.log('⚠️ La orden ya no está PENDIENTE, abortando...'); // <--- LOG 3: Early Return
+      return;
+    }
+
+    this.notifyUserSuccess(order);
 
     await this.notifyBrandsOfSale(orderId);
 
     const walletEvent = new OrderPaidWalletEvent();
     walletEvent.orderId = order.id;
     walletEvent.userId = order.user.id;
+    walletEvent.totalAmount = Number(order.totalPrice);
+    const co2 = Number(order.totalCarbonFootprint);
+    walletEvent.totalCo2Saved = !isNaN(co2) ? co2 : 0;
 
-    walletEvent.totalAmount = order.totalPrice;
-
-    walletEvent.totalCo2Saved = order.totalCarbonFootprint || 0;
+    console.log('🚀 Emitiendo evento de Wallet:', walletEvent); // <--- LOG 4: Éxito
 
     this.eventEmitter.emit('order.paid', walletEvent);
+
+    order.status = OrderStatus.PAID;
+    await this.orderRepository.save(order);
   }
 
   private notifyUserSuccess(order: Order): void {

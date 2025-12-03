@@ -6,10 +6,11 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { Wallet } from './entities/wallet.entity';
 import { Reward } from './entities/reward.entity';
 import { WalletTransaction } from './entities/wallet-transaction.entity';
+import { OrderPaidListener } from './listeners/order-paid.listener';
 
 @Module({
   imports: [TypeOrmModule.forFeature([Wallet, Reward, WalletTransaction])],
   controllers: [WalletController],
-  providers: [WalletService, PointsCalculatorService],
+  providers: [WalletService, PointsCalculatorService, OrderPaidListener],
 })
 export class WalletModule {}

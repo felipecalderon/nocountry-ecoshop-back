@@ -53,7 +53,7 @@ export class BrandsService {
 
   async findOne(id: string) {
     return await this.brandRepository.findOne({
-      where: { id },
+      where: { owner: { id } },
       relations: ['owner', 'products'],
     });
   }
