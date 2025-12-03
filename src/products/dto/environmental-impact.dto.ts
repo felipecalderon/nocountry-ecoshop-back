@@ -27,13 +27,13 @@ export class EnvironmentalImpactDto {
   @Type(() => Number)
   recycledContent: number;
 
-  @ApiProperty({
-    description: 'Nivel de la insignia ecologica',
-    enum: EcoBadgeLevel,
-    example: EcoBadgeLevel.HIGH,
-  })
-  @IsEnum(EcoBadgeLevel)
-  ecoBadgeLevel: EcoBadgeLevel;
+  // @ApiProperty({
+  //   description: 'Nivel de la insignia ecologica',
+  //   enum: EcoBadgeLevel,
+  //   example: EcoBadgeLevel.HIGH,
+  // })
+  // @IsEnum(EcoBadgeLevel)
+  // ecoBadgeLevel: EcoBadgeLevel;
 
   @ApiProperty({
     description: 'Composicion de materiales del producto (IDs existentes)',

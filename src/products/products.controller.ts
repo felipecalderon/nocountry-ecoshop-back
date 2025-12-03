@@ -7,11 +7,23 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
+  UseGuards,
 } from '@nestjs/common';
-import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import {
+  ApiOperation,
+  ApiResponse,
+  ApiTags,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
 import { ProductsService } from './products.service';
 import { Product } from './entities/product.entity';
-import { CreateProductDto } from './dto/product.dto';
+import { CreateProductDto, UpdateProductDto } from './dto/product.dto';
+
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { GetUser } from '../auth/decorators/get-user.decorator';
+import { User, UserRole } from '../users/entities/user.entity';
+import { Roles } from 'src/auth/decorators/roles.decorator';
+import { RolesGuard } from 'src/auth/guards/roles.guard';
 
 @ApiTags('products')
 @Controller('products')
@@ -57,6 +69,9 @@ export class ProductsController {
   }
 
   @Post()
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.BRAND_ADMIN, UserRole.ADMIN)
+  @ApiBearerAuth()
   @ApiOperation({
     summary: 'Crea un nuevo producto con su impacto ambiental y materiales',
   })
@@ -72,17 +87,39 @@ export class ProductsController {
   @ApiResponse({
     status: 400,
     description:
-      'Fallo de validación de datos o ID de certificación no válido.',
+      'Fallo de validación de datos o ID de certificación no válido, o la suma de porcentajes de materiales no es 100.',
   })
-  create(@Body() createProductDto: CreateProductDto) {
-    return this.productsService.create(createProductDto);
+  create(
+    @Body() createProductDto: CreateProductDto,
+    @GetUser('id') ownerId: string,
+  ) {
+    return this.productsService.create(createProductDto, ownerId);
   }
 
   @Patch(':id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.BRAND_ADMIN, UserRole.ADMIN)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Actualizar un producto por ID' })
-  @ApiResponse({ status: 200, description: 'Product updated successfully' })
-  update(@Param('id') id: string, @Body() updateProductDto: CreateProductDto) {
-    return this.productsService.update(id, updateProductDto);
+  @ApiResponse({
+    status: 200,
+    description: 'Producto actualizado exitosamente',
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'ID de producto inválido o duplicado de slug/sku',
+  })
+  @ApiResponse({
+    status: 403,
+    description:
+      'No tienes permisos para actualizar este producto (no es de tu marca)',
+  })
+  update(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() updateProductDto: UpdateProductDto,
+    @GetUser('id') ownerId: string,
+  ) {
+    return this.productsService.update(id, updateProductDto, ownerId);
   }
 
   @Delete(':id')

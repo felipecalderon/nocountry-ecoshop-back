@@ -7,13 +7,18 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository, In } from 'typeorm';
 import { Product } from './entities/product.entity';
-import { EnvironmentalImpact } from './entities/environmental-impact.entity';
+import {
+  EcoBadgeLevel,
+  EnvironmentalImpact,
+} from './entities/environmental-impact.entity';
 import { MaterialProduct } from './entities/material-product.entity';
-import { Brand } from '../brands/entities/brand.entity';
-import { Certification } from '../certifications/entities/certification.entity';
+import { MaterialComposition } from 'src/material-composition/entities/material-composition.entity';
+
 import { CreateProductDto, UpdateProductDto } from './dto/product.dto';
 import { MaterialProductDto } from './dto/material-product.dto';
-import { MaterialComposition } from 'src/material-composition/entities/material-composition.entity';
+import { BrandsService } from 'src/brands/brands.service';
+import { MaterialCompositionService } from 'src/material-composition/material-composition.service';
+import { CertificationsService } from 'src/certifications/certifications.service';
 
 // Tranforma el nombre a minusculas y reemplaza espacios por guiones. El slug
 function generateSlug(name: string): string {
@@ -28,23 +33,30 @@ function generateSku(name: string): string {
   return `${prefix}-${timestamp}`;
 }
 
+// Calculo automatico de ecoBadgeLevel
+function calculateEcoBadgeLevel(
+  recycledContent: number,
+  carbonFactor: number,
+): EcoBadgeLevel {
+  if (carbonFactor < 0.05) return EcoBadgeLevel.NEUTRAL;
+  if (recycledContent >= 75 && carbonFactor <= 1.5) return EcoBadgeLevel.HIGH;
+  if (recycledContent >= 50 || carbonFactor <= 3.0) return EcoBadgeLevel.MEDIUM;
+  return EcoBadgeLevel.LOW;
+}
+
 @Injectable()
 export class ProductsService {
   constructor(
     @InjectRepository(Product)
     private readonly productRepository: Repository<Product>,
     @InjectRepository(EnvironmentalImpact)
-    private readonly impactRepository: Repository<EnvironmentalImpact>,
-    @InjectRepository(MaterialComposition)
-    private readonly compositionRepository: Repository<MaterialComposition>,
+    private readonly environmentalImpactRepository: Repository<EnvironmentalImpact>,
     @InjectRepository(MaterialProduct)
     private readonly materialProductRepository: Repository<MaterialProduct>,
-    @InjectRepository(Brand)
-    private readonly brandRepository: Repository<Brand>,
-    @InjectRepository(Certification)
-    private readonly certificationRepository: Repository<Certification>,
-
     private readonly dataSource: DataSource,
+    private readonly brandsService: BrandsService,
+    private readonly certificationsService: CertificationsService,
+    private readonly materialCompositionService: MaterialCompositionService,
   ) {}
 
   async findAll(): Promise<Product[]> {
@@ -91,103 +103,91 @@ export class ProductsService {
     return product;
   }
 
-  async create(createProductDto: CreateProductDto): Promise<Product> {
+  async create(
+    createProductDto: CreateProductDto,
+    userId: string,
+  ): Promise<Product> {
     const {
-      brandId,
-      certificationIds = [],
-      environmentalImpact,
       materials,
-      name,
-      weightKg, // Para el calculo de la huella de CO2
+      environmentalImpact,
+      certificationIds,
       ...productDetails
     } = createProductDto;
 
-    // 1 CONFIG DE TRASACCIONES DE TYPEORM
+    // Validacion de la suma de porcentajes
+    const totalPercentage = materials.reduce(
+      (sum, mat) => sum + mat.percentage,
+      0,
+    );
+    if (totalPercentage !== 100) {
+      throw new BadRequestException(
+        'La suma de los porcentajes de los materiales debe ser igual a 100',
+      );
+    }
+
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
 
     try {
-      // 2 RELACIONES EXISTENTES DE MARCAS Y CERTFICADOS, SOLO BUSCANDO PO ID
-      // FUTURO ENDPOINT DE BUSQUEDA DE ID OJOOO
-      const brand = await queryRunner.manager.findOne(Brand, {
-        where: { id: brandId },
-      });
-      if (!brand) {
-        throw new NotFoundException(`Marca con ID ${brandId} no encontrada`);
-      }
+      // 1 VALIDACION DE MARCA Y  CERTIFICADOS
+      const brand = await this.brandsService.findOneByOwnerId(userId);
 
-      let certifications: Certification[] = [];
-      if (certificationIds.length > 0) {
-        certifications = await queryRunner.manager.findBy(Certification, {
-          id: In(certificationIds),
-        });
-        if (certifications.length !== certificationIds.length) {
-          const foundIds = certifications.map((c) => c.id);
-          const notFoundIds = certificationIds.filter(
-            (id) => !foundIds.includes(id),
-          );
-          throw new BadRequestException(
-            `Algunos ID de certificados no son validos o no existen: ${notFoundIds.join(', ')}.`,
-          );
-        }
-      }
+      const certifications =
+        await this.certificationsService.findAllAndValidate(
+          certificationIds || [], // Puede estar vacio
+        );
 
-      // 3 GENERAR PRODUCTO BASE Y GUARDAR EN DB
-      const slug = generateSlug(name);
-      const sku = generateSku(name);
-
-      // crear el producto y guardar
-      const newProduct = this.productRepository.create({
+      // 2 CREACION DE LA ENTIDAD DEL PRODUCTO BASE
+      const product = this.productRepository.create({
         ...productDetails,
-        name,
-        weightKg, // para el calculo
-        slug,
-        sku,
+        slug: generateSlug(productDetails.name),
+        sku: generateSku(productDetails.name),
         brand: brand,
         certifications: certifications,
       });
-      const product = await queryRunner.manager.save(Product, newProduct);
 
-      // 4 MANEJO DE MATERIALES Y CALCULO DE FACTORES AMBIENTALES
-      const { totalCarbonFactor, totalWaterFactor } =
-        await this.handleMaterialComposition(product, materials, queryRunner);
+      await queryRunner.manager.save(product); // Guardar el producto SOLO para obtener la id
 
-      const carbonFootprint = weightKg * totalCarbonFactor;
-      const waterUsage = weightKg * totalWaterFactor; // Creación del Impacto Ambiental con valores calculados
-      const safeRound = (value: number): number =>
-        Math.round(value * 100) / 100;
+      // 3 MANEJO DE MATERIALES
+      const { totalCarbonFactor, totalWaterFactor, materialProductsToSave } =
+        await this.handleMaterialComposition(materials, product);
 
-      const newImpact = this.impactRepository.create({
-        ...environmentalImpact,
-        carbonFootprint: safeRound(carbonFootprint),
-        waterUsage: safeRound(waterUsage),
-        product: product,
-      });
-      await queryRunner.manager.save(EnvironmentalImpact, newImpact);
+      await queryRunner.manager.save(materialProductsToSave);
 
-      // commit de la transaccion y retorno del result
+      // 4 MANEJO DE IMPACTO AMBIENTAL
+      const environmentalImpactEntity =
+        this.environmentalImpactRepository.create({
+          ...environmentalImpact,
+          product: product, // Product ya tiene id, ojo
+        });
+
+      // Calculos ambientales
+      const rawCarbonFootprint = totalCarbonFactor * productDetails.weightKg;
+      const rawWaterUsage = totalWaterFactor * productDetails.weightKg;
+
+      environmentalImpactEntity.carbonFootprint = parseFloat(
+        rawCarbonFootprint.toFixed(2),
+      );
+      environmentalImpactEntity.waterUsage = parseFloat(
+        rawWaterUsage.toFixed(2),
+      );
+
+      // Calculo auto de la ecoBadge
+      environmentalImpactEntity.ecoBadgeLevel = calculateEcoBadgeLevel(
+        environmentalImpact.recycledContent,
+        totalCarbonFactor,
+      );
+
+      await queryRunner.manager.save(environmentalImpactEntity);
+
+      // 5 ASIGNAR RELACIONES PARA FINALIZAR TODO TODITO
+      product.environmentalImpact = environmentalImpactEntity;
+      product.materials = materialProductsToSave;
+
       await queryRunner.commitTransaction();
 
-      // 5 DEVOLVER EL PRODUCT CON SUS RELACIONES Y TODO LISTITO
-      // FUTURO ENDPOINT DE BUSQUEDA DE ID OJOOO
-      const createdProduct = await this.productRepository.findOne({
-        where: { id: product.id },
-        relations: [
-          'brand',
-          'environmentalImpact',
-          'certifications',
-          'materials.materialComposition',
-        ],
-      });
-
-      if (!createdProduct) {
-        throw new InternalServerErrorException(
-          'Error al obtener el product creado',
-        );
-      }
-
-      return createdProduct;
+      return product;
     } catch (error) {
       await queryRunner.rollbackTransaction(); // Si hay error manda un rollback
       if (
@@ -196,156 +196,169 @@ export class ProductsService {
       ) {
         throw error;
       }
-      // Errores de duplicados
       if (error.code === 'ER_DUP_ENTRY') {
         throw new BadRequestException(
           'El nombre/slug o el SKU generado esta duplicado',
         );
       }
       throw new InternalServerErrorException(
-        'Ocurrio un error inicial al procesar el product',
+        `Ocurrio un error al procesar el producto: ${error.message || 'Error de DB desconocido'}`,
       );
     } finally {
-      // Cerrar el query runner siempre
       await queryRunner.release();
     }
   }
 
-  async update(id: string, changes: UpdateProductDto): Promise<Product> {
+  async update(
+    id: string,
+    changes: UpdateProductDto,
+    ownerId: string,
+  ): Promise<Product> {
     const {
-      brandId,
-      certificationIds, // Opcional
-      environmentalImpact, //Opcional
-      materials, //Opcional
-      name,
-      weightKg,
+      certificationIds,
+      environmentalImpact,
+      materials,
       ...productDetails
     } = changes;
 
-    // 1 CONFIG DE TRANSACCIONES DE TYPEORM
+    if (materials) {
+      const totalPercentage = materials.reduce(
+        (sum, mat) => sum + mat.percentage,
+        0,
+      );
+      if (totalPercentage !== 100) {
+        throw new BadRequestException(
+          'La suma de los porcentajes de los materiales debe ser igual a 100',
+        );
+      }
+    }
+
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
 
     try {
-      // 2 BUSCAR EL PRODUCT CON LAS RELACIONES DE IMPACT y MATERIALS
+      // 1 BUSCAR EL PRODUCT CON TODAS LAS RELACIONES
       const productToUpdate = await this.productRepository.findOne({
         where: { id },
-        relations: ['environmentalImpact', 'materials'],
+        relations: [
+          'brand',
+          'environmentalImpact',
+          'materials',
+          'certifications',
+        ],
       });
       if (!productToUpdate) {
         throw new NotFoundException(`Producto con ID ${id} no encontrado`);
       }
 
-      // 3 MANEJO DE RELACIONES
-      let brand: Brand | undefined; // el resultado que puede ser brand o null
-      if (brandId) {
-        const foundBrand = await queryRunner.manager.findOne(Brand, {
-          where: { id: brandId },
-        });
-
-        if (!foundBrand) {
-          throw new NotFoundException(`Marca con ID ${brandId} no encontrada`);
-        }
-        brand = foundBrand;
+      // 2 MANEJO Y VALIDACION DE RELACIONES
+      const userBrand = await this.brandsService.findOneByOwnerId(ownerId);
+      if (productToUpdate.brand.id !== userBrand.id) {
+        throw new BadRequestException(
+          'No tienes permiso para actualizar este producto (no pertenece a tu marca)',
+        );
       }
 
-      let certifications: Certification[] =
-        productToUpdate.certifications || []; // Si no hay cambios nuevos dejamos los viejos
+      // 3 ACTUALIZAR CAMPOS BASE DEL PRODUCTO
+      if (productDetails.name) {
+        productToUpdate.slug = generateSlug(productDetails.name);
+        productToUpdate.sku = generateSku(productDetails.name);
+      }
+      this.productRepository.merge(productToUpdate, productDetails); // precio descripcion stock etc etc
+
+      // 4 MANEJO DE CERTIFICACIONES
       if (certificationIds !== undefined) {
         if (certificationIds.length > 0) {
-          certifications = await queryRunner.manager.findBy(Certification, {
-            id: In(certificationIds),
-          });
-          if (certifications.length !== certificationIds.length) {
-            const foundIds = certifications.map((c) => c.id);
-            const notFoundIds = certificationIds.filter(
-              (certId) => !foundIds.includes(certId),
+          productToUpdate.certifications =
+            await this.certificationsService.findAllAndValidate(
+              certificationIds,
             );
-            throw new BadRequestException(
-              `Algunos ID de certificados no son validos o no existen: ${notFoundIds.join(', ')}.`,
-            );
-          }
         } else {
-          certifications = []; // Si el array de IDs esta vacío limpiamos todas los certif
+          productToUpdate.certifications = []; // Limpiar si esta vacio
         }
       }
-      // 4 ACTUALIZAR CAMPOS BASE DEL PRODUCT
-      const updatedProduct = this.productRepository.merge(productToUpdate, {
-        ...productDetails,
-        name,
-        weightKg,
-        slug: name ? generateSlug(name) : productToUpdate.slug,
-        sku: name ? generateSku(name) : productToUpdate.sku,
-        brand: brand || productToUpdate.brand, // Actualizar SOLO si brandId fue dado
-        certifications: certifications,
-      });
 
-      const product = await queryRunner.manager.save(Product, updatedProduct);
+      await queryRunner.manager.save(productToUpdate); // Guardar los cambios del producto Base
 
+      // 5 MANEJO DE MATERIALES Y CÁLCULOS AMBIENTALES
       let totalCarbonFactor = 0;
       let totalWaterFactor = 0;
+      let newMaterialProducts: MaterialProduct[] = [];
 
-      // 5 MANEJO DE MATERIALES
+      // Si hay nuevos materiales borrar materiales viejos de la DB
       if (materials && materials.length > 0) {
-        // OJO Esto borra fisicamente las entradas en la tabla material_products
         await queryRunner.manager.delete(MaterialProduct, {
-          product: productToUpdate,
+          product: { id: productToUpdate.id },
         });
 
-        // Recrear nuevas relacioes y calcular los factores ambientales
+        // Generar nuevos materiales
         const factors = await this.handleMaterialComposition(
-          product,
           materials,
-          queryRunner,
+          productToUpdate,
         );
         totalCarbonFactor = factors.totalCarbonFactor;
         totalWaterFactor = factors.totalWaterFactor;
-      } else {
-        // Si no hay nuevos materiales dejamoslos viejos
+        newMaterialProducts = factors.materialProductsToSave;
+
+        await queryRunner.manager.save(newMaterialProducts);
+
+        // Actualizar en memoria para el final
+        productToUpdate.materials = newMaterialProducts;
+      }
+
+      // Si NO cambian los materiales
+      else {
+        // Recalcular basado en totales actuales y peso anterior
+        const currentWeight = productToUpdate.weightKg || 1;
         totalCarbonFactor =
-          productToUpdate.environmentalImpact.carbonFootprint /
-          productToUpdate.weightKg;
+          productToUpdate.environmentalImpact.carbonFootprint / currentWeight;
         totalWaterFactor =
-          productToUpdate.environmentalImpact.waterUsage /
-          productToUpdate.weightKg;
+          productToUpdate.environmentalImpact.waterUsage / currentWeight;
       }
 
       // 6 ACTUALIZAR IMPACTO AMBIENTAL
-      const finalWeightKg = weightKg ?? productToUpdate.weightKg;
+      const updatedImpactData = {
+        ...productToUpdate.environmentalImpact,
+        ...environmentalImpact,
+      };
 
-      // Recalculo SOLO si hay materiales o si el peso cambio
-      if (materials || weightKg) {
-        const carbonFootprint = finalWeightKg * totalCarbonFactor;
-        const waterUsage = finalWeightKg * totalWaterFactor;
-        const safeRound = (value: number): number =>
-          Math.round(value * 100) / 100;
+      if (materials || productDetails.weightKg) {
+        const finalWeight = productToUpdate.weightKg;
 
-        // Actualizar el impacto existente
-        const updatedImpact = this.impactRepository.merge(
-          productToUpdate.environmentalImpact,
-          {
-            ...environmentalImpact, // Aplicar cambios opcinales
-            carbonFootprint: safeRound(carbonFootprint),
-            waterUsage: safeRound(waterUsage),
-          },
-        );
-        await queryRunner.manager.save(EnvironmentalImpact, updatedImpact);
+        const rawCarbon = totalCarbonFactor * finalWeight;
+        const rawWater = totalWaterFactor * finalWeight;
+
+        updatedImpactData.carbonFootprint = parseFloat(rawCarbon.toFixed(2));
+        updatedImpactData.waterUsage = parseFloat(rawWater.toFixed(2));
       }
 
-      // 7 COMMIT Y RETURN
+      // Recalcular EcoBadge
+      updatedImpactData.ecoBadgeLevel = calculateEcoBadgeLevel(
+        updatedImpactData.recycledContent,
+        totalCarbonFactor,
+      );
+
+      // Mergear los cambios en la entidad de impacto
+      this.environmentalImpactRepository.merge(
+        productToUpdate.environmentalImpact,
+        updatedImpactData,
+      );
+
+      await queryRunner.manager.save(productToUpdate.environmentalImpact);
+
       await queryRunner.commitTransaction();
 
-      return this.findOne(product.id);
+      // Devolver el producto actualizado
+      return productToUpdate;
     } catch (error) {
-      await queryRunner.rollbackTransaction(); // Si hay error manda un rollback
+      await queryRunner.rollbackTransaction();
       if (
         error instanceof NotFoundException ||
         error instanceof BadRequestException
       ) {
         throw error;
       }
-      // Errores de duplicados
       if (error.code === 'ER_DUP_ENTRY') {
         throw new BadRequestException(
           'El nombre/slug o el SKU generado esta duplicado',
@@ -355,7 +368,6 @@ export class ProductsService {
         'Ocurrio un error inicial al procesar el product',
       );
     } finally {
-      // Cerrar el query runner siempre
       await queryRunner.release();
     }
   }
@@ -372,22 +384,27 @@ export class ProductsService {
 
   // VIVA LA IA --- Manejo de la composicion de materiales y calculo de factores para la creacion del producto
   private async handleMaterialComposition(
-    product: Product,
     materials: MaterialProductDto[],
-    queryRunner: any,
-  ): Promise<{ totalCarbonFactor: number; totalWaterFactor: number }> {
-    const compositionIds = materials.map((m) => m.materialCompositionId);
+    product: Product,
+  ): Promise<{
+    totalCarbonFactor: number;
+    totalWaterFactor: number;
+    materialProductsToSave: MaterialProduct[];
+  }> {
+    const compositionIds = materials.map((mat) => mat.materialCompositionId);
 
-    const compositions = await queryRunner.manager.findBy(MaterialComposition, {
-      id: In(compositionIds),
-    });
+    // Service de MaterialComposition
+    const compositions =
+      await this.materialCompositionService.findByIds(compositionIds);
 
     if (compositions.length !== compositionIds.length) {
       const foundIds = compositions.map((c) => c.id);
       const notFoundIds = compositionIds.filter((id) => !foundIds.includes(id));
 
       throw new NotFoundException(
-        `Los siguientes IDs de MaterialComposition no existen: ${notFoundIds.join(', ')}. Recuerda que deben ser creados a través de su propio endpoint.`,
+        `Los siguientes IDs de MaterialComposition no existen: ${notFoundIds.join(
+          ', ',
+        )}`,
       );
     }
 
@@ -399,15 +416,16 @@ export class ProductsService {
     let totalWaterFactor = 0;
 
     const materialProductsToSave = materials.map((matData) => {
-      // FIX 1 & 2: Usamos aserción de tipo para que TypeScript reconozca las propiedades
+      // Usamos aserción de tipo para que TypeScript reconozca las propiedades
       const compositionEntity = compositionsMap.get(
         matData.materialCompositionId,
-      ) as MaterialComposition; // Calcular la contribución de este material al factor total
+      ) as MaterialComposition;
 
+      // Calcular la contribución de este material al factor total
       totalCarbonFactor +=
         (matData.percentage / 100) * compositionEntity.carbonFootprintPerKg;
       totalWaterFactor +=
-        (matData.percentage / 100) * compositionEntity.waterUsagePerKg; // FIX 3: El objeto creado ahora usa el tipo correcto para materialComposition
+        (matData.percentage / 100) * compositionEntity.waterUsagePerKg;
 
       return this.materialProductRepository.create({
         percentage: matData.percentage,
@@ -416,8 +434,6 @@ export class ProductsService {
       });
     });
 
-    await queryRunner.manager.save(MaterialProduct, materialProductsToSave);
-
-    return { totalCarbonFactor, totalWaterFactor };
+    return { totalCarbonFactor, totalWaterFactor, materialProductsToSave };
   }
 }

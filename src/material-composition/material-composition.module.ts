@@ -8,5 +8,6 @@ import { MaterialComposition } from './entities/material-composition.entity';
   imports: [TypeOrmModule.forFeature([MaterialComposition])],
   controllers: [MaterialCompositionController],
   providers: [MaterialCompositionService],
+  exports: [MaterialCompositionService],
 })
 export class MaterialCompositionModule {}

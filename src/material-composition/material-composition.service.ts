@@ -5,7 +5,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { MaterialComposition } from './entities/material-composition.entity';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { CreateMaterialCompositionDto } from './dto/material-composition.dto';
 import { UpdateMaterialCompositionDto } from './dto/update-material-composition.dto';
 
@@ -53,5 +53,14 @@ export class MaterialCompositionService {
   async remove(id: string) {
     const material = await this.findOne(id);
     return await this.materialRepository.remove(material);
+  }
+
+  async findByIds(ids: string[]): Promise<MaterialComposition[]> {
+    const compositions = await this.materialRepository.findBy({
+      id: In(ids),
+    });
+    if (!compositions)
+      throw new NotFoundException(`Materiales con IDs ${ids} no encontrados`);
+    return compositions;
   }
 }
