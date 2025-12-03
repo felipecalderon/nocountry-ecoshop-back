@@ -11,9 +11,11 @@ import {
   TransactionType,
   WalletTransaction,
 } from '../entities/wallet-transaction.entity';
-import { Reward } from '../entities/reward.entity';
+import { Reward, RewardType } from '../entities/reward.entity';
 import { RedeemPointsDto } from '../dto/redeem-points.dto';
 import { CreateRewardDto } from '../dto/create-reward.dto';
+import { Coupon } from '../entities/coupon.entity';
+import * as crypto from 'crypto';
 
 @Injectable()
 export class WalletService {
@@ -24,6 +26,8 @@ export class WalletService {
     private readonly walletTransactionRepository: Repository<WalletTransaction>,
     @InjectRepository(Reward)
     private readonly rewardRepository: Repository<Reward>,
+    @InjectRepository(Coupon)
+    private readonly couponRepository: Repository<Coupon>,
     private readonly dataSource: DataSource,
   ) {}
 
@@ -100,7 +104,7 @@ export class WalletService {
       const wallet = await manager.findOne(Wallet, { where: { userId } });
       if (!wallet) throw new NotFoundException('Wallet not found for user.');
 
-      if (wallet.balance < amount) {
+      if (Number(wallet.balance) < amount) {
         throw new UnprocessableEntityException(
           `Insufficient funds. Balance: ${wallet.balance}, Required: ${amount}`,
         );
@@ -113,17 +117,50 @@ export class WalletService {
         await manager.save(reward);
       }
 
-      wallet.balance -= amount;
-
+      wallet.balance = Number(wallet.balance) - amount;
       await manager.save(wallet);
+
+      let responseData: any = {};
+
+      if (reward.type === RewardType.COUPON) {
+        const discount = reward.metadata?.discountPercentage || 0;
+        const validDays = reward.metadata?.validDays || 30;
+
+        const expiresAt = new Date();
+        expiresAt.setDate(expiresAt.getDate() + validDays);
+
+        const code = this.generateCouponCode();
+
+        const coupon = manager.create(Coupon, {
+          code,
+          discountPercentage: discount,
+          user: { id: userId },
+          sourceReward: { id: reward.id },
+          expiresAt,
+          isUsed: false,
+        });
+        await manager.save(coupon);
+
+        responseData = {
+          couponCode: code,
+          expiresAt,
+          discount: `${discount}%`,
+        };
+      } else if (reward.type === RewardType.DONATION) {
+        responseData = { message: '¡Gracias por tu donación!' };
+      }
 
       const tx = manager.create(WalletTransaction, {
         wallet,
         amount: -amount,
         type: TransactionType.REDEEM_REWARD,
-        referenceId: rewardId,
+        referenceId: reward.id,
         description: `Canje: ${reward.name}`,
-        metadata: { rewardId: reward.id, rewardName: reward.name },
+        metadata: {
+          rewardId: reward.id,
+          rewardName: reward.name,
+          ...responseData,
+        },
       });
       await manager.save(tx);
 
@@ -133,6 +170,7 @@ export class WalletService {
         spentPoints: amount,
         newBalance: wallet.balance,
         rewardName: reward.name,
+        ...responseData,
       };
     });
   }
@@ -144,5 +182,24 @@ export class WalletService {
 
   async findAllRewards() {
     return this.rewardRepository.find({ where: { isActive: true } });
+  }
+
+  async getMyCoupons(userId: string, onlyActive: boolean = true) {
+    const query = this.couponRepository
+      .createQueryBuilder('coupon')
+      .where('coupon.userId = :userId', { userId });
+
+    if (onlyActive) {
+      query
+        .andWhere('coupon.isUsed = :isUsed', { isUsed: false })
+        .andWhere('coupon.expiresAt > :now', { now: new Date() });
+    }
+
+    return query.orderBy('coupon.createdAt', 'DESC').getMany();
+  }
+
+  private generateCouponCode(): string {
+    const suffix = crypto.randomBytes(3).toString('hex').toUpperCase();
+    return `ECO-${suffix}`;
   }
 }

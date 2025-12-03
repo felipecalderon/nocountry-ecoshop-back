@@ -10,6 +10,7 @@ import { WalletService } from '../services/wallet.service';
 import {
   ApiBearerAuth,
   ApiOperation,
+  ApiQuery,
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
@@ -96,5 +97,24 @@ export class WalletController {
   })
   async createReward(@Body() createRewardDto: CreateRewardDto) {
     return this.walletService.createReward(createRewardDto);
+  }
+
+  @Get('coupons')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Obtener mis cupones generados' })
+  @ApiQuery({
+    name: 'onlyActive',
+    required: false,
+    type: Boolean,
+    description:
+      'Filtro de estado. Si es true (por defecto), devuelve SOLO cupones válidos (no usados y no vencidos), ideal para mostrar en el Checkout. Si es false, devuelve todo el historial histórico de cupones (usados y vencidos).',
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Lista de cupones pertenecientes al usuario.',
+  })
+  async getMyCoupons(@GetUser() user: User) {
+    return this.walletService.getMyCoupons(user.id, true);
   }
 }

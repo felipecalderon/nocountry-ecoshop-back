@@ -32,7 +32,9 @@ import { WalletModule } from './wallet/wallet.module';
     PaymentsModule,
     FilesModule,
     ConfigModule.forRoot({ isGlobal: true }),
-    EventEmitterModule.forRoot(),
+    EventEmitterModule.forRoot({
+      global: true,
+    }),
     NotificationsModule,
     AdminModule,
     MaterialCompositionModule,

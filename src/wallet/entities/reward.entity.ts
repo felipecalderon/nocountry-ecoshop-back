@@ -35,15 +35,15 @@ export class Reward {
   @Column({ type: 'boolean', default: true })
   isActive: boolean;
 
-  // Tipo de recompensa para lógica de backend
-  // DONATION = Ejecuta lógica de donación
-  // COUPON = Genera código de descuento
   @Column({
     type: 'enum',
     enum: RewardType,
     default: RewardType.DONATION,
   })
   type: RewardType;
+
+  @Column({ type: 'json', nullable: true })
+  metadata: Record<string, any>;
 
   @CreateDateColumn()
   createdAt: Date;

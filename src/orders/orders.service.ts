@@ -19,6 +19,7 @@ import {
   StockAlertEvent,
 } from 'src/notifications/notifications.service';
 import { OrderPaidWalletEvent } from 'src/wallet/listeners/order-paid.event';
+import { Coupon } from 'src/wallet/entities/coupon.entity';
 
 @Injectable()
 export class OrdersService {
@@ -30,7 +31,7 @@ export class OrdersService {
   ) {}
 
   async create(createOrderDto: CreateOrderDto, user: User) {
-    const { addressId, items } = createOrderDto;
+    const { addressId, items, couponCode } = createOrderDto;
     const stockAlerts: StockAlertEvent[] = [];
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
@@ -95,6 +96,39 @@ export class OrdersService {
         newOrder.items.push(orderItem);
       }
 
+      if (couponCode) {
+        const coupon = await queryRunner.manager.findOne(Coupon, {
+          where: { code: couponCode },
+          relations: ['user'],
+        });
+
+        if (!coupon) {
+          throw new NotFoundException('El código de descuento no es válido.');
+        }
+
+        if (coupon.isUsed) {
+          throw new BadRequestException('Este cupón ya ha sido utilizado.');
+        }
+
+        if (coupon.user.id !== user.id) {
+          throw new BadRequestException(
+            'Este cupón no pertenece a tu usuario.',
+          );
+        }
+
+        if (coupon.expiresAt && new Date() > coupon.expiresAt) {
+          throw new BadRequestException('El cupón ha expirado.');
+        }
+
+        const discountAmount =
+          (newOrder.totalPrice * coupon.discountPercentage) / 100;
+
+        newOrder.totalPrice = Math.max(0, newOrder.totalPrice - discountAmount);
+
+        coupon.isUsed = true;
+        await queryRunner.manager.save(coupon);
+      }
+
       const savedOrder = await queryRunner.manager.save(Order, newOrder);
 
       for (const item of newOrder.items) {
@@ -108,7 +142,9 @@ export class OrdersService {
         orderId: savedOrder.id,
         totalPrice: savedOrder.totalPrice,
         totalCarbonFootprint: savedOrder.totalCarbonFootprint,
-        message: 'Orden creada.',
+        message: couponCode
+          ? `Orden creada con éxito. Descuento aplicado.`
+          : 'Orden creada con éxito.',
       };
     } catch (error) {
       await queryRunner.rollbackTransaction();
@@ -132,26 +168,29 @@ export class OrdersService {
       relations: ['user'],
     });
 
-    if (!order || order.status !== OrderStatus.PENDING) {
+    if (!order) {
       return;
     }
 
-    order.status = OrderStatus.PAID;
-    await this.orderRepository.save(order);
+    if (order.status !== OrderStatus.PENDING) {
+      return;
+    }
 
-    await this.notifyUserSuccess(order);
+    this.notifyUserSuccess(order);
 
     await this.notifyBrandsOfSale(orderId);
 
     const walletEvent = new OrderPaidWalletEvent();
     walletEvent.orderId = order.id;
     walletEvent.userId = order.user.id;
-
-    walletEvent.totalAmount = order.totalPrice;
-
-    walletEvent.totalCo2Saved = order.totalCarbonFootprint || 0;
+    walletEvent.totalAmount = Number(order.totalPrice);
+    const co2 = Number(order.totalCarbonFootprint);
+    walletEvent.totalCo2Saved = !isNaN(co2) ? co2 : 0;
 
     this.eventEmitter.emit('order.paid', walletEvent);
+
+    order.status = OrderStatus.PAID;
+    await this.orderRepository.save(order);
   }
 
   private notifyUserSuccess(order: Order): void {

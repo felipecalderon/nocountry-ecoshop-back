@@ -6,9 +6,9 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule, { rawBody: true });
   swaggerConfig(app);
 
-  await app.listen(process.env.PORT ?? 3000);
+  await app.listen(process.env.PORT ?? 3010);
 
-  console.log(`✅ Aplicacion corriendo: http://localhost:3000`);
-  console.log(`📚 Documentacion Swagger: http://localhost:3000/api/docs`);
+  console.log(`✅ Aplicacion corriendo: http://localhost:3010`);
+  console.log(`📚 Documentacion Swagger: http://localhost:3010/api/docs`);
 }
 bootstrap();
