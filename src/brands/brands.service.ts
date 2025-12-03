@@ -140,4 +140,17 @@ export class BrandsService {
       totalOrders: Number(stats.totalOrders) || 0,
     };
   }
+
+  async findOneByOwnerId(ownerId: string): Promise<Brand> {
+    const brand = await this.brandRepository.findOne({
+      where: { owner: { id: ownerId } },
+    });
+
+    if (!brand) {
+      throw new NotFoundException(
+        `Marca no encontrada para el usuario con ID ${ownerId}`,
+      );
+    }
+    return brand;
+  }
 }

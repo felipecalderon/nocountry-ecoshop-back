@@ -132,14 +132,6 @@ export class CreateProductDto {
   @Type(() => MaterialProductDto)
   materials: MaterialProductDto[];
 
-  @ApiProperty({
-    description: 'ID de la marca a la que pertenece el producto',
-    example: '123e4567-e89b-12d3-a456-426614174000',
-  })
-  @IsUUID('4', { message: 'El brandId debe ser un UUID valido' })
-  @IsNotEmpty()
-  brandId: string; // manyToOne
-
   @ApiPropertyOptional({
     description: 'IDs de las certificados del producto',
     type: [String],

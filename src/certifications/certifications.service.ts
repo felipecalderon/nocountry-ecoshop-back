@@ -1,8 +1,12 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { CreateCertificationDto } from './dto/create-certification.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Certification } from './entities/certification.entity';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 
 @Injectable()
 export class CertificationsService {
@@ -29,5 +33,32 @@ export class CertificationsService {
 
   async findAll() {
     return await this.certRepository.find();
+  }
+
+  // Busca y valida que todos los IDs de certificados que existan
+  async findAllAndValidate(
+    certificationIds: string[],
+  ): Promise<Certification[]> {
+    if (!certificationIds || certificationIds.length === 0) return []; // Puede estar vacio
+
+    const foundCertifications = await this.certRepository.findBy({
+      id: In(certificationIds),
+    });
+
+    // Validacion
+    if (foundCertifications.length !== certificationIds.length) {
+      const foundIds = foundCertifications.map((c) => c.id);
+      const notFoundIds = certificationIds.filter(
+        (id) => !foundIds.includes(id),
+      );
+
+      throw new NotFoundException(
+        `Los siguientes IDs de Certificación no existen: ${notFoundIds.join(
+          ', ',
+        )}`,
+      );
+    }
+
+    return foundCertifications;
   }
 }

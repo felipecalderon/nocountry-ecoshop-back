@@ -9,5 +9,6 @@ import { FilesModule } from 'src/files/files.module';
   imports: [TypeOrmModule.forFeature([Certification]), FilesModule],
   controllers: [CertificationsController],
   providers: [CertificationsService],
+  exports: [CertificationsService],
 })
 export class CertificationsModule {}
