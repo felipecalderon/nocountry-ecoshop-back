@@ -14,7 +14,7 @@ import { RewardType } from '../entities/reward.entity';
 export class CreateRewardDto {
   @ApiProperty({
     description: 'Nombre de la recompensa',
-    example: 'Plantar un Árbol Nativo',
+    example: 'PlantaEco-Descuento 10%',
   })
   @IsString()
   @IsNotEmpty()
@@ -22,7 +22,7 @@ export class CreateRewardDto {
 
   @ApiPropertyOptional({
     description: 'Descripción detallada',
-    example: 'Ayuda a reforestar la selva misionera con esta donación.',
+    example: 'Obtén un 10% de descuento en tu próxima compra sostenible.',
   })
   @IsString()
   @IsOptional()
@@ -67,4 +67,12 @@ export class CreateRewardDto {
   @IsBoolean()
   @IsOptional()
   isActive?: boolean;
+
+  @ApiPropertyOptional({
+    description:
+      'Configuración extra (ej: porcentaje de descuento, días validez)',
+    example: { discountPercentage: 10, validDays: 30 },
+  })
+  @IsOptional()
+  metadata?: Record<string, any>;
 }

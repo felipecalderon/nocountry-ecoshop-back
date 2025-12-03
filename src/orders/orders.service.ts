@@ -19,6 +19,7 @@ import {
   StockAlertEvent,
 } from 'src/notifications/notifications.service';
 import { OrderPaidWalletEvent } from 'src/wallet/listeners/order-paid.event';
+import { Coupon } from 'src/wallet/entities/coupon.entity';
 
 @Injectable()
 export class OrdersService {
@@ -30,7 +31,7 @@ export class OrdersService {
   ) {}
 
   async create(createOrderDto: CreateOrderDto, user: User) {
-    const { addressId, items } = createOrderDto;
+    const { addressId, items, couponCode } = createOrderDto;
     const stockAlerts: StockAlertEvent[] = [];
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
@@ -95,6 +96,39 @@ export class OrdersService {
         newOrder.items.push(orderItem);
       }
 
+      if (couponCode) {
+        const coupon = await queryRunner.manager.findOne(Coupon, {
+          where: { code: couponCode },
+          relations: ['user'],
+        });
+
+        if (!coupon) {
+          throw new NotFoundException('El código de descuento no es válido.');
+        }
+
+        if (coupon.isUsed) {
+          throw new BadRequestException('Este cupón ya ha sido utilizado.');
+        }
+
+        if (coupon.user.id !== user.id) {
+          throw new BadRequestException(
+            'Este cupón no pertenece a tu usuario.',
+          );
+        }
+
+        if (coupon.expiresAt && new Date() > coupon.expiresAt) {
+          throw new BadRequestException('El cupón ha expirado.');
+        }
+
+        const discountAmount =
+          (newOrder.totalPrice * coupon.discountPercentage) / 100;
+
+        newOrder.totalPrice = Math.max(0, newOrder.totalPrice - discountAmount);
+
+        coupon.isUsed = true;
+        await queryRunner.manager.save(coupon);
+      }
+
       const savedOrder = await queryRunner.manager.save(Order, newOrder);
 
       for (const item of newOrder.items) {
@@ -108,7 +142,9 @@ export class OrdersService {
         orderId: savedOrder.id,
         totalPrice: savedOrder.totalPrice,
         totalCarbonFootprint: savedOrder.totalCarbonFootprint,
-        message: 'Orden creada.',
+        message: couponCode
+          ? `Orden creada con éxito. Descuento aplicado.`
+          : 'Orden creada con éxito.',
       };
     } catch (error) {
       await queryRunner.rollbackTransaction();
@@ -127,24 +163,16 @@ export class OrdersService {
   }
 
   async markAsPaid(orderId: string): Promise<void> {
-    console.log(`🔍 Intentando marcar orden ${orderId} como pagada...`); // <--- LOG 1: Entrada
-
     const order = await this.orderRepository.findOne({
       where: { id: orderId },
       relations: ['user'],
     });
 
-    // Validar si existe la orden y ver su estado actual en el log
     if (!order) {
-      console.log('❌ Orden no encontrada');
       return;
     }
 
-    console.log(`Estado actual de la orden: ${order.status}`); // <--- LOG 2: Estado real
-
-    // Aquí está el sospechoso:
     if (order.status !== OrderStatus.PENDING) {
-      console.log('⚠️ La orden ya no está PENDIENTE, abortando...'); // <--- LOG 3: Early Return
       return;
     }
 
@@ -158,8 +186,6 @@ export class OrdersService {
     walletEvent.totalAmount = Number(order.totalPrice);
     const co2 = Number(order.totalCarbonFootprint);
     walletEvent.totalCo2Saved = !isNaN(co2) ? co2 : 0;
-
-    console.log('🚀 Emitiendo evento de Wallet:', walletEvent); // <--- LOG 4: Éxito
 
     this.eventEmitter.emit('order.paid', walletEvent);
 

@@ -1,11 +1,13 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
   ArrayMinSize,
   IsArray,
   IsInt,
   IsNotEmpty,
+  IsOptional,
   IsPositive,
+  IsString,
   IsUUID,
   ValidateNested,
 } from 'class-validator';
@@ -36,4 +38,12 @@ export class CreateOrderDto {
   @ValidateNested({ each: true })
   @Type(() => OrderItemDto)
   items: OrderItemDto[];
+
+  @ApiPropertyOptional({
+    description: 'Código de cupón',
+    example: 'ECO-A1B2C3',
+  })
+  @IsOptional()
+  @IsString()
+  couponCode?: string;
 }

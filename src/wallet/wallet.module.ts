@@ -7,9 +7,12 @@ import { Wallet } from './entities/wallet.entity';
 import { Reward } from './entities/reward.entity';
 import { WalletTransaction } from './entities/wallet-transaction.entity';
 import { OrderPaidListener } from './listeners/order-paid.listener';
+import { Coupon } from './entities/coupon.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Wallet, Reward, WalletTransaction])],
+  imports: [
+    TypeOrmModule.forFeature([Wallet, Reward, WalletTransaction, Coupon]),
+  ],
   controllers: [WalletController],
   providers: [WalletService, PointsCalculatorService, OrderPaidListener],
 })
