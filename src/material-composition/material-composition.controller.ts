@@ -24,28 +24,28 @@ export class MaterialCompositionController {
     private readonly materialCompositionService: MaterialCompositionService,
   ) {}
 
-  @Post('material-compositions')
+  @Post()
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.BRAND_ADMIN)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Crear nuevo material base' })
   createMaterialComposition(@Body() createDto: CreateMaterialCompositionDto) {
     return this.materialCompositionService.create(createDto);
   }
 
-  @Get('material-compositions')
+  @Get()
   @ApiOperation({ summary: 'Listar todos los materiales' })
   findAll() {
     return this.materialCompositionService.findAll();
   }
 
-  @Get('material-compositions/:id')
+  @Get('/:id')
   @ApiOperation({ summary: 'Obtener un material por ID' })
   findOne(@Param('id', ParseUUIDPipe) id: string) {
     return this.materialCompositionService.findOne(id);
   }
 
-  @Patch('material-compositions/:id')
+  @Patch('/:id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
   @ApiBearerAuth()
@@ -57,7 +57,7 @@ export class MaterialCompositionController {
     return this.materialCompositionService.update(id, updateDto);
   }
 
-  @Delete('material-compositions/:id')
+  @Delete('/:id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
   @ApiBearerAuth()
