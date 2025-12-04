@@ -1,23 +1,15 @@
-import {
-  Injectable,
-  NotFoundException,
-  Logger,
-  BadRequestException,
-} from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, Repository, QueryRunner } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
 import { Product } from './entities/product.entity';
-import { EnvironmentalImpact } from './entities/environmental-impact.entity';
 import { MaterialProduct } from './entities/material-product.entity';
 import { CreateProductDto, UpdateProductDto } from './dto/product.dto';
 import { BrandsService } from 'src/brands/brands.service';
-import { MaterialCompositionService } from 'src/material-composition/material-composition.service';
 import { CertificationsService } from 'src/certifications/certifications.service';
 import { ProductsHelper } from './helpers/products.helper';
 
 @Injectable()
 export class ProductsService {
-  private readonly logger = new Logger(ProductsService.name);
   private readonly PRODUCT_RELATIONS = [
     'brand',
     'environmentalImpact',
@@ -28,21 +20,20 @@ export class ProductsService {
   constructor(
     @InjectRepository(Product)
     private readonly productRepository: Repository<Product>,
-    @InjectRepository(EnvironmentalImpact)
     private readonly dataSource: DataSource,
     private readonly brandsService: BrandsService,
     private readonly certificationsService: CertificationsService,
-    private readonly productsHelperService: ProductsHelper,
+    private readonly productsHelper: ProductsHelper,
   ) {}
 
-  async findAll(): Promise<Product[]> {
+  async findAll(): Promise<Product[] | void> {
     try {
       return await this.productRepository.find({
         relations: this.PRODUCT_RELATIONS,
         order: { name: 'ASC' },
       });
     } catch (error) {
-      this.productsHelperService.handleDBExceptions(
+      this.productsHelper.handleDBExceptions(
         error,
         'Error al buscar los productos',
       );
@@ -63,22 +54,17 @@ export class ProductsService {
     return product;
   }
 
-  async findByBrand(userId: string): Promise<Product[]> {
+  async findByBrand(brandId: string): Promise<Product[] | void> {
     try {
-      const brand = await this.brandsService.findOne(userId);
-      if (!brand)
-        throw new BadRequestException(
-          'El usuario no posee una marca registrada.',
-        );
       return await this.productRepository.find({
-        where: { brand: { id: brand.id } },
+        where: { brand: { id: brandId } },
         relations: this.PRODUCT_RELATIONS,
         order: { name: 'ASC' },
       });
     } catch (error) {
-      this.productsHelperService.handleDBExceptions(
+      this.productsHelper.handleDBExceptions(
         error,
-        `Error al buscar productos de la marca.`,
+        `Error al buscar productos de la marca ${brandId}`,
       );
     }
   }
@@ -86,67 +72,84 @@ export class ProductsService {
   async create(
     createProductDto: CreateProductDto,
     userId: string,
-  ): Promise<Product> {
-    const { environmentalImpact, certificationIds, ...productDetails } =
+  ): Promise<Product | void> {
+    // eslint-disable-next-line prefer-const
+    let { environmentalImpact, certificationIds, ...productDetails } =
       createProductDto;
 
-    this.productsHelperService.validateMaterialPercentageSum(
-      environmentalImpact.materials,
-    );
+    // --- CORRECCIÓN DEFINITIVA: PARSEO MANUAL OBLIGATORIO ---
+    // Como environmentalImpact llega como string desde Multipart, lo convertimos a Objeto AQUÍ.
+    if (typeof environmentalImpact === 'string') {
+      try {
+        console.log('Detectado string en environmentalImpact, parseando...'); // Log de debug
+        environmentalImpact = JSON.parse(environmentalImpact);
+      } catch (error) {
+        console.error('Error parseando environmentalImpact:', error);
+      }
+    }
+
+    if (typeof certificationIds === 'string') {
+      const ids = certificationIds as string;
+      try {
+        certificationIds = ids.includes('[') ? JSON.parse(ids) : ids.split(',');
+      } catch {
+        certificationIds = [];
+      }
+    }
+    // --------------------------------------------------------
+
+    // Ahora que environmentalImpact es un OBJETO, podemos acceder a .materials
+    const materials = environmentalImpact?.materials;
+
+    // Validamos usando el helper
+    this.productsHelper.validateMaterialPercentageSum(materials);
 
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
 
     try {
-      // 1. Obtener dependencias externas
       const brand = await this.brandsService.findOneByOwnerId(userId);
       const certifications =
         await this.certificationsService.findAllAndValidate(
           certificationIds || [],
         );
 
-      // 2. Crear Producto Base
       const product = this.productRepository.create({
         ...productDetails,
-        slug: this.productsHelperService.generateSlug(productDetails.name),
-        sku: this.productsHelperService.generateSku(productDetails.name),
+        slug: this.productsHelper.generateSlug(productDetails.name),
+        sku: this.productsHelper.generateSku(productDetails.name),
         brand,
         certifications,
       });
       await queryRunner.manager.save(product);
 
-      // 3. Procesar Materiales y Calcular Factores
       const { totalCarbonFactor, totalWaterFactor, materialProducts } =
-        await this.productsHelperService.processMaterialComposition(
-          environmentalImpact.materials,
+        await this.productsHelper.processMaterialComposition(
+          materials,
           product,
         );
 
       await queryRunner.manager.save(materialProducts);
 
-      // 4. Procesar Impacto Ambiental
-      const impactEntity =
-        this.productsHelperService.createEnvironmentalImpactEntity(
-          environmentalImpact,
-          product,
-          productDetails.weightKg,
-          totalCarbonFactor,
-          totalWaterFactor,
-        );
+      const impactEntity = this.productsHelper.createEnvironmentalImpactEntity(
+        environmentalImpact,
+        product,
+        productDetails.weightKg,
+        totalCarbonFactor,
+        totalWaterFactor,
+      );
       await queryRunner.manager.save(impactEntity);
 
-      // 5. Finalizar
       await queryRunner.commitTransaction();
 
-      // Asignar relaciones para el retorno (sin recargar de DB)
       product.environmentalImpact = impactEntity;
       product.materials = materialProducts;
 
       return product;
     } catch (error) {
       await queryRunner.rollbackTransaction();
-      this.productsHelperService.handleDBExceptions(
+      this.productsHelper.handleDBExceptions(
         error,
         'Error al crear el producto',
       );
@@ -159,18 +162,31 @@ export class ProductsService {
     id: string,
     changes: UpdateProductDto,
     ownerId: string,
-  ): Promise<Product> {
-    const { certificationIds, environmentalImpact, ...productDetails } =
-      changes;
+  ): Promise<Product | void> {
+    // eslint-disable-next-line prefer-const
+    let { environmentalImpact, certificationIds, ...productDetails } = changes;
 
-    if (environmentalImpact) {
-      this.productsHelperService.validateMaterialPercentageSum(
-        environmentalImpact.materials,
-      );
+    // Parseo manual también en Update por seguridad
+    if (environmentalImpact && typeof environmentalImpact === 'string') {
+      try {
+        environmentalImpact = JSON.parse(environmentalImpact);
+      } catch {}
+    }
+    if (certificationIds && typeof certificationIds === 'string') {
+      const ids = certificationIds as string;
+      try {
+        certificationIds = ids.includes('[') ? JSON.parse(ids) : ids.split(',');
+      } catch {}
+    }
+
+    const materials = environmentalImpact?.materials;
+
+    if (materials) {
+      this.productsHelper.validateMaterialPercentageSum(materials);
     }
 
     const productToUpdate = await this.findOne(id);
-    await this.productsHelperService.validateProductOwnership(
+    await this.productsHelper.validateProductOwnership(
       productToUpdate,
       ownerId,
     );
@@ -180,18 +196,16 @@ export class ProductsService {
     await queryRunner.startTransaction();
 
     try {
-      // 1. Actualizar Datos Básicos
       if (productDetails.name) {
-        productToUpdate.slug = this.productsHelperService.generateSlug(
+        productToUpdate.slug = this.productsHelper.generateSlug(
           productDetails.name,
         );
-        productToUpdate.sku = this.productsHelperService.generateSku(
+        productToUpdate.sku = this.productsHelper.generateSku(
           productDetails.name,
         );
       }
       this.productRepository.merge(productToUpdate, productDetails);
 
-      // 2. Actualizar Certificaciones
       if (certificationIds !== undefined) {
         productToUpdate.certifications =
           certificationIds.length > 0
@@ -203,31 +217,21 @@ export class ProductsService {
 
       await queryRunner.manager.save(productToUpdate);
 
-      // 3. Actualizar Materiales e Impacto
-      // Calculamos factores base actuales por si no cambian los materiales
       let currentFactors =
-        this.productsHelperService.calculateCurrentFactors(productToUpdate);
+        this.productsHelper.calculateCurrentFactors(productToUpdate);
 
-      if (environmentalImpact?.materials) {
-        if (
-          environmentalImpact.materials &&
-          environmentalImpact.materials.length > 0
-        ) {
-          // Borrar anteriores
-          await queryRunner.manager.delete(MaterialProduct, {
-            product: { id: id },
-          });
-        }
+      if (materials && materials.length > 0) {
+        await queryRunner.manager.delete(MaterialProduct, {
+          product: { id: id },
+        });
 
-        // Crear nuevos
         const materialResult =
-          await this.productsHelperService.processMaterialComposition(
-            environmentalImpact.materials,
+          await this.productsHelper.processMaterialComposition(
+            materials,
             productToUpdate,
           );
         await queryRunner.manager.save(materialResult.materialProducts);
 
-        // Actualizar factores y relación en memoria
         currentFactors = {
           carbon: materialResult.totalCarbonFactor,
           water: materialResult.totalWaterFactor,
@@ -235,24 +239,25 @@ export class ProductsService {
         productToUpdate.materials = materialResult.materialProducts;
       }
 
-      // 4. Recalcular Impacto Ambiental
-      const updatedImpact =
-        this.productsHelperService.updateEnvironmentalImpactEntity(
-          productToUpdate.environmentalImpact,
-          environmentalImpact,
-          productToUpdate.weightKg,
-          currentFactors.carbon,
-          currentFactors.water,
-        );
+      if (environmentalImpact || materials) {
+        const updatedImpact =
+          this.productsHelper.updateEnvironmentalImpactEntity(
+            productToUpdate.environmentalImpact,
+            environmentalImpact,
+            productToUpdate.weightKg,
+            currentFactors.carbon,
+            currentFactors.water,
+          );
 
-      await queryRunner.manager.save(updatedImpact);
-      productToUpdate.environmentalImpact = updatedImpact;
+        await queryRunner.manager.save(updatedImpact);
+        productToUpdate.environmentalImpact = updatedImpact;
+      }
 
       await queryRunner.commitTransaction();
       return productToUpdate;
     } catch (error) {
       await queryRunner.rollbackTransaction();
-      this.productsHelperService.handleDBExceptions(
+      this.productsHelper.handleDBExceptions(
         error,
         'Error al actualizar el producto',
       );

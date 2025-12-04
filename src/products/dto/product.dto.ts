@@ -11,15 +11,14 @@ import {
   MaxLength,
   Min,
   ValidateNested,
-  ArrayMinSize,
   IsUUID,
+  IsObject,
 } from 'class-validator';
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import { PartialType } from '@nestjs/mapped-types';
 
 import { RecyclabilityStatus } from '../entities/product.entity';
 import { EnvironmentalImpactDto } from './environmental-impact.dto';
-import { MaterialProductDto } from './material-product.dto';
 
 export class CreateProductDto {
   @ApiProperty({
@@ -35,17 +34,17 @@ export class CreateProductDto {
   name: string;
 
   @ApiProperty({
-    description: 'URL de la imagen principal del producto',
-    example: 'https://example.com/images/camisa-blanca.jpg',
+    description:
+      'URL de la imagen principal del producto (Se llena automáticamente tras subir archivo)',
+    example: 'https://res.cloudinary.com/...',
   })
-  @IsUrl({}, { message: 'Debe ser una URL valida' })
-  @IsNotEmpty()
+  @IsOptional()
+  @IsString()
   image: string;
 
   @ApiPropertyOptional({
     description: 'Descripcion detallada del producto',
-    example:
-      'Camisa fabricada con algodón 100% orgánico certificado GOTS, etc...',
+    example: 'Camisa fabricada con algodón...',
     maxLength: 5000,
   })
   @IsOptional()
@@ -54,13 +53,13 @@ export class CreateProductDto {
   description?: string;
 
   @ApiProperty({
-    description: 'Precio del producto en dolares', // o pesos o la moneda que sea
+    description: 'Precio del producto en dolares',
     example: 29.99,
     minimum: 0.01,
   })
+  @Transform(({ value }) => Number(value))
   @IsNumber({ maxDecimalPlaces: 2 })
-  @Min(0.01, { message: 'El precio debe ser mayor a 0' })
-  @Type(() => Number)
+  @Min(0.01)
   price: number;
 
   @ApiProperty({
@@ -68,9 +67,9 @@ export class CreateProductDto {
     example: 150,
     minimum: 0,
   })
+  @Transform(({ value }) => Number(value))
   @IsNumber({ maxDecimalPlaces: 0 })
   @Min(0)
-  @Type(() => Number)
   stock: number;
 
   @ApiPropertyOptional({
@@ -88,35 +87,44 @@ export class CreateProductDto {
     example: 3.2,
     minimum: 0,
   })
+  @Transform(({ value }) => Number(value))
   @IsNumber({ maxDecimalPlaces: 3 })
-  @Min(0.0, { message: 'El peso no puede ser negativo' })
-  @Type(() => Number)
+  @Min(0.0)
   weightKg: number;
 
   @ApiProperty({
     description: 'Estado de reciclabildad del producto',
     enum: RecyclabilityStatus,
-    example: RecyclabilityStatus.FULLY_RECYCLABLE, // valor del enum de la entity
+    example: RecyclabilityStatus.FULLY_RECYCLABLE,
   })
-  @IsEnum(RecyclabilityStatus, {
-    message: 'Estado de reciclabilidad invalido',
-  })
+  @IsEnum(RecyclabilityStatus)
   recyclabilityStatus: RecyclabilityStatus;
 
   @ApiPropertyOptional({
-    description: 'Texto alternativo para la imagen (accesibilidad)',
-    example: 'Camisa blanca de algodoón orgánico sobre fondo negro',
+    description: 'Texto alternativo para la imagen',
+    example: 'Camisa blanca...',
     maxLength: 255,
   })
   @IsOptional()
   @IsString()
   @MaxLength(255)
-  imageAltText?: string; // opcional
+  imageAltText?: string;
 
   @ApiProperty({
-    description: 'Composicion de materiales del producto y su reciclabilidad.',
+    description: 'Composicion de materiales del producto',
     type: EnvironmentalImpactDto,
   })
+  @Transform(({ value }) => {
+    if (typeof value === 'string') {
+      try {
+        return JSON.parse(value);
+      } catch (error) {
+        return value;
+      }
+    }
+    return value;
+  })
+  @IsObject({ message: 'environmentalImpact debe ser un objeto JSON válido' })
   @ValidateNested()
   @Type(() => EnvironmentalImpactDto)
   environmentalImpact: EnvironmentalImpactDto;
@@ -124,19 +132,21 @@ export class CreateProductDto {
   @ApiPropertyOptional({
     description: 'IDs de las certificados del producto',
     type: [String],
-    example: [
-      '123e4567-e89b-12d3-a456-426614174000',
-      '223a456b-78c9-0d1e-2f34-56789ghijk02',
-    ],
   })
   @IsOptional()
   @IsArray()
-  @IsUUID('4', {
-    each: true,
-    message: 'Cada certificacion debe ser un UUID valido',
+  @Transform(({ value }) => {
+    if (typeof value === 'string') {
+      try {
+        return value.includes('[') ? JSON.parse(value) : value.split(',');
+      } catch (e) {
+        return [value];
+      }
+    }
+    return value;
   })
-  certificationIds?: string[]; // manyToMany
+  @IsUUID('4', { each: true })
+  certificationIds?: string[];
 }
 
-//  DTO para la actualización de productos. todos los campos de CreateProductDto pero opcionales.
 export class UpdateProductDto extends PartialType(CreateProductDto) {}

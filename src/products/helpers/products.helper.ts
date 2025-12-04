@@ -31,6 +31,12 @@ export class ProductsHelper {
   ) {}
 
   validateMaterialPercentageSum(materials: MaterialProductDto[]): void {
+    if (!materials || !Array.isArray(materials)) {
+      console.log(materials);
+      throw new BadRequestException(
+        'La lista de materiales (materials) es obligatoria y debe ser un array válido.',
+      );
+    }
     const total = materials.reduce((sum, mat) => sum + mat.percentage, 0);
     if (total !== 100) {
       throw new BadRequestException(

@@ -7,6 +7,7 @@ import {
 } from 'typeorm';
 import { Product } from './product.entity';
 import { MaterialComposition } from '../../material-composition/entities/material-composition.entity';
+import { Exclude } from 'class-transformer';
 
 @Entity({ name: 'material_products' })
 export class MaterialProduct {
@@ -24,6 +25,7 @@ export class MaterialProduct {
   materialComposition: MaterialComposition;
 
   @ManyToOne(() => Product, (product) => product.materials)
+  @Exclude()
   @JoinColumn({ name: 'product_id' })
   product: Product;
 }

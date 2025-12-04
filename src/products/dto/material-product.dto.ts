@@ -24,5 +24,5 @@ export class MaterialProductDto {
     message: 'El ID de la composición de material no es un UUID válido',
   })
   @IsNotEmpty()
-  materialCompositionId: string; // lo obtenemos del endpoit de material composition
+  materialCompositionId: string;
 }

@@ -1,5 +1,6 @@
 import {
   Body,
+  ClassSerializerInterceptor,
   Controller,
   Delete,
   FileTypeValidator,
@@ -35,6 +36,7 @@ import { FilesService } from 'src/files/files.service';
 
 @ApiTags('products')
 @Controller('products')
+@UseInterceptors(ClassSerializerInterceptor)
 export class ProductsController {
   constructor(
     private readonly productsService: ProductsService,
@@ -56,7 +58,7 @@ export class ProductsController {
     status: 500,
     description: 'Error interno del servidor.',
   })
-  async findAll(): Promise<Product[]> {
+  async findAll(): Promise<Product[] | void> {
     return this.productsService.findAll();
   }
 
@@ -107,7 +109,7 @@ export class ProductsController {
           description: 'Nombre del producto',
           example: 'Camisa de Algodón Orgánico Blanca',
         },
-        image: {
+        file: {
           description: 'Imagen principal del producto',
           type: 'string',
           format: 'binary',

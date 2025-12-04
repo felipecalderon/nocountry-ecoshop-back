@@ -6,6 +6,7 @@ import {
   PrimaryGeneratedColumn,
 } from 'typeorm';
 import { Product } from './product.entity';
+import { Exclude } from 'class-transformer';
 
 export enum EcoBadgeLevel {
   LOW = 'LOW',
@@ -54,5 +55,6 @@ export class EnvironmentalImpact {
 
   @OneToOne(() => Product, (product) => product.environmentalImpact)
   @JoinColumn({ name: 'product_id' })
+  @Exclude()
   product: Product;
 }
