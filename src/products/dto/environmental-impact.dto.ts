@@ -8,6 +8,7 @@ import {
   IsArray,
   ArrayMinSize,
   ValidateNested,
+  IsNotEmpty,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 
@@ -40,6 +41,7 @@ export class EnvironmentalImpactDto {
     type: [MaterialProductDto],
     isArray: true,
   })
+  @IsNotEmpty()
   @IsArray()
   @ArrayMinSize(1, { message: 'Debe incluir al menos un material' })
   @ValidateNested({ each: true })
