@@ -44,8 +44,16 @@ export class CertificationsController {
     schema: {
       type: 'object',
       properties: {
-        name: { type: 'string' },
-        description: { type: 'string' },
+        name: {
+          type: 'string',
+          description: 'Nombre del sello',
+          example: 'Cruelty Free',
+        },
+        description: {
+          type: 'string',
+          description: 'Explicación del impacto',
+          example: 'Producto no testeado en animales.',
+        },
         file: { type: 'string', format: 'binary' },
       },
     },

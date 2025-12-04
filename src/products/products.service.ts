@@ -87,14 +87,12 @@ export class ProductsService {
     createProductDto: CreateProductDto,
     userId: string,
   ): Promise<Product> {
-    const {
-      materials,
-      environmentalImpact,
-      certificationIds,
-      ...productDetails
-    } = createProductDto;
+    const { environmentalImpact, certificationIds, ...productDetails } =
+      createProductDto;
 
-    this.productsHelperService.validateMaterialPercentageSum(materials);
+    this.productsHelperService.validateMaterialPercentageSum(
+      environmentalImpact.materials,
+    );
 
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
@@ -121,7 +119,7 @@ export class ProductsService {
       // 3. Procesar Materiales y Calcular Factores
       const { totalCarbonFactor, totalWaterFactor, materialProducts } =
         await this.productsHelperService.processMaterialComposition(
-          materials,
+          environmentalImpact.materials,
           product,
         );
 
@@ -162,15 +160,13 @@ export class ProductsService {
     changes: UpdateProductDto,
     ownerId: string,
   ): Promise<Product> {
-    const {
-      materials,
-      certificationIds,
-      environmentalImpact,
-      ...productDetails
-    } = changes;
+    const { certificationIds, environmentalImpact, ...productDetails } =
+      changes;
 
-    if (materials) {
-      this.productsHelperService.validateMaterialPercentageSum(materials);
+    if (environmentalImpact) {
+      this.productsHelperService.validateMaterialPercentageSum(
+        environmentalImpact.materials,
+      );
     }
 
     const productToUpdate = await this.findOne(id);
@@ -212,16 +208,21 @@ export class ProductsService {
       let currentFactors =
         this.productsHelperService.calculateCurrentFactors(productToUpdate);
 
-      if (materials && materials.length > 0) {
-        // Borrar anteriores
-        await queryRunner.manager.delete(MaterialProduct, {
-          product: { id: id },
-        });
+      if (environmentalImpact?.materials) {
+        if (
+          environmentalImpact.materials &&
+          environmentalImpact.materials.length > 0
+        ) {
+          // Borrar anteriores
+          await queryRunner.manager.delete(MaterialProduct, {
+            product: { id: id },
+          });
+        }
 
         // Crear nuevos
         const materialResult =
           await this.productsHelperService.processMaterialComposition(
-            materials,
+            environmentalImpact.materials,
             productToUpdate,
           );
         await queryRunner.manager.save(materialResult.materialProducts);

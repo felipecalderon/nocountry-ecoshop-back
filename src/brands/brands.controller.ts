@@ -15,6 +15,7 @@ import {
 import { BrandsService } from './brands.service';
 import {
   ApiBearerAuth,
+  ApiBody,
   ApiConsumes,
   ApiOperation,
   ApiResponse,
@@ -44,6 +45,28 @@ export class BrandsController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Registrar una nueva marca (con logo opcional)' })
   @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        name: {
+          type: 'string',
+          description: 'Nombre de la marca (único)',
+          example: 'Patagonia',
+        },
+        description: {
+          type: 'string',
+          description: 'Descripción de la marca.',
+          example: '',
+        },
+        file: {
+          description: 'Logo de la marca (jpg, jpeg, png, webp)',
+          type: 'string',
+          format: 'binary',
+        },
+      },
+    },
+  })
   @UseInterceptors(FileInterceptor('file'))
   async create(
     @Body() createBrandDto: CreateBrandDto,

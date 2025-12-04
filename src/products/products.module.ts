@@ -11,6 +11,7 @@ import { BrandsModule } from 'src/brands/brands.module';
 import { MaterialCompositionModule } from 'src/material-composition/material-composition.module';
 import { CertificationsModule } from 'src/certifications/certifications.module';
 import { ProductsHelper } from './helpers/products.helper';
+import { FilesService } from 'src/files/files.service';
 
 @Module({
   imports: [
@@ -27,6 +28,6 @@ import { ProductsHelper } from './helpers/products.helper';
     CertificationsModule,
   ],
   controllers: [ProductsController],
-  providers: [ProductsService, ProductsHelper],
+  providers: [ProductsService, ProductsHelper, FilesService],
 })
 export class ProductsModule {}

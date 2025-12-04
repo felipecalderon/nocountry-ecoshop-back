@@ -114,23 +114,12 @@ export class CreateProductDto {
   imageAltText?: string; // opcional
 
   @ApiProperty({
-    description: 'Impacto ambiental del producto',
+    description: 'Composicion de materiales del producto y su reciclabilidad.',
     type: EnvironmentalImpactDto,
   })
   @ValidateNested()
   @Type(() => EnvironmentalImpactDto)
   environmentalImpact: EnvironmentalImpactDto;
-
-  @ApiProperty({
-    description: 'Composicion de materiales del producto',
-    type: [MaterialProductDto], // array de MaterialProductDto
-    isArray: true,
-  })
-  @IsArray()
-  @ArrayMinSize(1, { message: 'Debe incluir al menos un material' })
-  @ValidateNested({ each: true })
-  @Type(() => MaterialProductDto)
-  materials: MaterialProductDto[];
 
   @ApiPropertyOptional({
     description: 'IDs de las certificados del producto',
