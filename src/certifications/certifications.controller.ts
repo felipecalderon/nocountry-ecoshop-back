@@ -36,9 +36,9 @@ export class CertificationsController {
 
   @Post()
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.BRAND_ADMIN)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Crear nueva certificación (Solo Admin)' })
+  @ApiOperation({ summary: 'Crear nueva certificación' })
   @ApiConsumes('multipart/form-data')
   @ApiBody({
     schema: {

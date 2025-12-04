@@ -2,17 +2,15 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ProductsService } from './products.service';
 import { ProductsController } from './products.controller';
-
 import { Product } from './entities/product.entity';
 import { EnvironmentalImpact } from './entities/environmental-impact.entity';
 import { MaterialProduct } from './entities/material-product.entity';
 import { Brand } from 'src/brands/entities/brand.entity';
 import { Certification } from 'src/certifications/entities/certification.entity';
-import { MaterialComposition } from 'src/material-composition/entities/material-composition.entity';
-
 import { BrandsModule } from 'src/brands/brands.module';
 import { MaterialCompositionModule } from 'src/material-composition/material-composition.module';
 import { CertificationsModule } from 'src/certifications/certifications.module';
+import { ProductsHelper } from './helpers/products.helper';
 
 @Module({
   imports: [
@@ -29,6 +27,6 @@ import { CertificationsModule } from 'src/certifications/certifications.module';
     CertificationsModule,
   ],
   controllers: [ProductsController],
-  providers: [ProductsService],
+  providers: [ProductsService, ProductsHelper],
 })
 export class ProductsModule {}

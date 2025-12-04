@@ -49,6 +49,17 @@ export class ProductsController {
     return this.productsService.findAll();
   }
 
+  @Get('brand')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.BRAND_ADMIN, UserRole.ADMIN)
+  @ApiOperation({
+    summary:
+      'Obtiene una lista de los productos de la marca del usuario registrado.',
+  })
+  async findMyBrand(@GetUser('id') userId: string) {
+    return await this.productsService.findByBrand(userId);
+  }
+
   @Get(':term')
   @ApiOperation({
     summary: 'Obtiene los detalles de un producto por su ID (UUID), slug o SKU',
