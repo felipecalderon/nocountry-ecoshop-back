@@ -20,5 +20,5 @@ export class ImpactStatsDto {
     description: 'Siguiente meta para subir de nivel',
     example: 50,
   })
-  nextLevelGoal: number;
+  nextGoal: number;
 }
