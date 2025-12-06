@@ -41,52 +41,11 @@ export class BrandsController {
   ) {}
 
   @Post()
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.BRAND_ADMIN)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Registrar una nueva marca (con logo opcional)' })
-  @ApiConsumes('multipart/form-data')
-  @ApiBody({
-    schema: {
-      type: 'object',
-      properties: {
-        name: {
-          type: 'string',
-          description: 'Nombre de la marca (único)',
-          example: 'Patagonia',
-        },
-        description: {
-          type: 'string',
-          description: 'Descripción de la marca.',
-          example: '',
-        },
-        file: {
-          description: 'Logo de la marca (jpg, jpeg, png, webp)',
-          type: 'string',
-          format: 'binary',
-        },
-      },
-    },
-  })
-  @UseInterceptors(FileInterceptor('file'))
-  async create(
-    @Body() createBrandDto: CreateBrandDto,
-    @GetUser() user: User,
-    @UploadedFile(
-      new ParseFilePipe({
-        validators: [
-          new MaxFileSizeValidator({ maxSize: 1024 * 1024 * 2 }),
-          new FileTypeValidator({ fileType: /(jpg|jpeg|png|webp)$/ }),
-        ],
-        fileIsRequired: false,
-      }),
-    )
-    file?: Express.Multer.File,
-  ) {
-    if (file) {
-      const image = await this.filesService.uploadImage(file);
-      createBrandDto.logoUrl = image.secure_url;
-    }
-
+  async create(@Body() createBrandDto: CreateBrandDto, @GetUser() user: User) {
     return this.brandsService.create(createBrandDto, user);
   }
 

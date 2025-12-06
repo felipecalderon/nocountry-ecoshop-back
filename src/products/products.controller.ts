@@ -3,15 +3,11 @@ import {
   ClassSerializerInterceptor,
   Controller,
   Delete,
-  FileTypeValidator,
   Get,
-  MaxFileSizeValidator,
   Param,
-  ParseFilePipe,
   ParseUUIDPipe,
   Patch,
   Post,
-  UploadedFile,
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
@@ -20,7 +16,6 @@ import {
   ApiResponse,
   ApiTags,
   ApiBearerAuth,
-  ApiConsumes,
   ApiBody,
 } from '@nestjs/swagger';
 import { ProductsService } from './products.service';
@@ -28,13 +23,12 @@ import { Product } from './entities/product.entity';
 import { CreateProductDto, UpdateProductDto } from './dto/product.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { GetUser } from '../auth/decorators/get-user.decorator';
-import { User, UserRole } from '../users/entities/user.entity';
+import { UserRole } from '../users/entities/user.entity';
 import { Roles } from 'src/auth/decorators/roles.decorator';
 import { RolesGuard } from 'src/auth/guards/roles.guard';
-import { FileInterceptor } from '@nestjs/platform-express';
 import { FilesService } from 'src/files/files.service';
 
-@ApiTags('products')
+@ApiTags('Productos')
 @Controller('products')
 @UseInterceptors(ClassSerializerInterceptor)
 export class ProductsController {
@@ -52,7 +46,7 @@ export class ProductsController {
     status: 200,
     description: 'Lista de productos recuperada exitosamente.',
     type: Product,
-    isArray: true, // un array
+    isArray: true,
   })
   @ApiResponse({
     status: 500,
@@ -65,6 +59,7 @@ export class ProductsController {
   @Get('brand')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.BRAND_ADMIN, UserRole.ADMIN)
+  @ApiBearerAuth()
   @ApiOperation({
     summary:
       'Obtiene una lista de los productos de la marca del usuario registrado.',
@@ -97,106 +92,19 @@ export class ProductsController {
   @Roles(UserRole.BRAND_ADMIN, UserRole.ADMIN)
   @ApiBearerAuth()
   @ApiOperation({
-    summary: 'Crea un nuevo producto con su impacto ambiental y materiales',
+    summary: 'Crea un nuevo producto (Requiere URL de imagen previa)',
+    description: 'La imagen debe subirse primero a /files/upload.',
   })
-  @ApiConsumes('multipart/form-data')
-  @ApiBody({
-    schema: {
-      type: 'object',
-      properties: {
-        name: {
-          type: 'string',
-          description: 'Nombre del producto',
-          example: 'Camisa de Algodón Orgánico Blanca',
-        },
-        file: {
-          description: 'Imagen principal del producto',
-          type: 'string',
-          format: 'binary',
-        },
-        description: {
-          type: 'string',
-          description: 'Descripcion detallada del producto',
-          example:
-            'Camisa fabricada con algodón 100% orgánico certificado GOTS, etc...',
-        },
-        price: {
-          type: 'number',
-          description: 'Precio del producto en dolares',
-          example: 29.99,
-        },
-        stock: {
-          type: 'number',
-          description: 'Cantidad disponible en stock',
-          example: 150,
-        },
-        originCountry: {
-          type: 'string',
-          description: 'País origen del producto.',
-          example: 'Argentina',
-        },
-        weightKg: {
-          type: 'number',
-          description: 'Peso del producto en kilogramos.',
-          example: 3.2,
-        },
-        recyclabilityStatus: {
-          type: 'string',
-          description: 'Estado de reciclabildad del producto',
-          example: 'FULLY_RECYCLABLE',
-        },
-        imageAltText: {
-          type: 'string',
-          description: 'Texto alternativo para la imagen (accesibilidad)',
-          example: 'Camisa blanca de algodoón orgánico sobre fondo negro',
-        },
-        environmentalImpact: {
-          type: 'object',
-          description:
-            'Composicion de materiales del producto y su reciclabilidad.',
-          example: {
-            recycledContent: 75.5,
-            materials: ['Algodón Orgánico, Poliéster Reciclado'],
-          },
-        },
-        certificationIds: {
-          type: 'string[]',
-          description: 'IDs de las certificados del producto',
-          example: ['', ''],
-        },
-      },
-    },
-  })
+  @ApiBody({ type: CreateProductDto })
   @ApiResponse({
     status: 201,
     description: 'Producto creado exitosamente.',
-    type: Product,
   })
-  @ApiResponse({
-    status: 404,
-    description: 'No se encontró la Marca o Composición de Material.',
-  })
-  @ApiResponse({
-    status: 400,
-    description:
-      'Fallo de validación de datos o ID de certificación no válido, o la suma de porcentajes de materiales no es 100.',
-  })
-  @UseInterceptors(FileInterceptor('file'))
+  @ApiResponse({ status: 400, description: 'Datos inválidos.' })
   async create(
-    @UploadedFile(
-      new ParseFilePipe({
-        validators: [
-          new MaxFileSizeValidator({ maxSize: 1024 * 1024 * 2 }),
-          new FileTypeValidator({ fileType: /(jpg|jpeg|png|webp)$/ }),
-        ],
-      }),
-    )
-    file: Express.Multer.File,
     @Body() createProductDto: CreateProductDto,
     @GetUser('id') ownerId: string,
   ) {
-    const image = await this.filesService.uploadImage(file);
-    createProductDto.image = image.secure_url;
     return await this.productsService.create(createProductDto, ownerId);
   }
 
@@ -227,6 +135,9 @@ export class ProductsController {
   }
 
   @Delete(':id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.BRAND_ADMIN)
+  @ApiBearerAuth()
   @ApiOperation({
     summary: 'Realiza un borrado lógico de un producto por su ID (UUID).',
   })

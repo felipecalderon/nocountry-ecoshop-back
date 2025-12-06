@@ -73,35 +73,11 @@ export class ProductsService {
     createProductDto: CreateProductDto,
     userId: string,
   ): Promise<Product | void> {
-    // eslint-disable-next-line prefer-const
     let { environmentalImpact, certificationIds, ...productDetails } =
       createProductDto;
 
-    // --- CORRECCIÓN DEFINITIVA: PARSEO MANUAL OBLIGATORIO ---
-    // Como environmentalImpact llega como string desde Multipart, lo convertimos a Objeto AQUÍ.
-    if (typeof environmentalImpact === 'string') {
-      try {
-        console.log('Detectado string en environmentalImpact, parseando...'); // Log de debug
-        environmentalImpact = JSON.parse(environmentalImpact);
-      } catch (error) {
-        console.error('Error parseando environmentalImpact:', error);
-      }
-    }
+    const materials = environmentalImpact.materials;
 
-    if (typeof certificationIds === 'string') {
-      const ids = certificationIds as string;
-      try {
-        certificationIds = ids.includes('[') ? JSON.parse(ids) : ids.split(',');
-      } catch {
-        certificationIds = [];
-      }
-    }
-    // --------------------------------------------------------
-
-    // Ahora que environmentalImpact es un OBJETO, podemos acceder a .materials
-    const materials = environmentalImpact?.materials;
-
-    // Validamos usando el helper
     this.productsHelper.validateMaterialPercentageSum(materials);
 
     const queryRunner = this.dataSource.createQueryRunner();
@@ -163,21 +139,7 @@ export class ProductsService {
     changes: UpdateProductDto,
     ownerId: string,
   ): Promise<Product | void> {
-    // eslint-disable-next-line prefer-const
     let { environmentalImpact, certificationIds, ...productDetails } = changes;
-
-    // Parseo manual también en Update por seguridad
-    if (environmentalImpact && typeof environmentalImpact === 'string') {
-      try {
-        environmentalImpact = JSON.parse(environmentalImpact);
-      } catch {}
-    }
-    if (certificationIds && typeof certificationIds === 'string') {
-      const ids = certificationIds as string;
-      try {
-        certificationIds = ids.includes('[') ? JSON.parse(ids) : ids.split(',');
-      } catch {}
-    }
 
     const materials = environmentalImpact?.materials;
 
