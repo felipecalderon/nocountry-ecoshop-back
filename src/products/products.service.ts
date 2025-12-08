@@ -108,6 +108,11 @@ export class ProductsService {
 
       await queryRunner.manager.save(materialProducts);
 
+      product.recyclabilityStatus =
+        this.productsHelper.calculateRecyclabilityStatus(materialProducts);
+
+      await queryRunner.manager.save(product);
+
       const impactEntity = this.productsHelper.createEnvironmentalImpactEntity(
         environmentalImpact,
         product,

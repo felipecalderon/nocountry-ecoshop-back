@@ -9,7 +9,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { BrandsService } from 'src/brands/brands.service';
 import { MaterialCompositionService } from 'src/material-composition/material-composition.service';
-import { Product } from '../entities/product.entity';
+import { Product, RecyclabilityStatus } from '../entities/product.entity';
 import {
   EcoBadgeLevel,
   EnvironmentalImpact,
@@ -149,7 +149,6 @@ export class ProductsHelper {
   ): EnvironmentalImpact {
     const mergedData = { ...currentImpact, ...(changesDto || {}) };
 
-    // Recalcular métricas
     mergedData.carbonFootprint = parseFloat((carbonFactor * weight).toFixed(2));
     mergedData.waterUsage = parseFloat((waterFactor * weight).toFixed(2));
     mergedData.ecoBadgeLevel = this.calculateEcoBadgeLevel(
@@ -179,6 +178,26 @@ export class ProductsHelper {
     throw new InternalServerErrorException(
       `Error inesperado: ${error.message || 'Check server logs'}`,
     );
+  }
+
+  calculateRecyclabilityStatus(
+    materialProducts: MaterialProduct[],
+  ): RecyclabilityStatus {
+    let ecoFriendlyPercentage = 0;
+
+    for (const mp of materialProducts) {
+      if (mp.materialComposition.isEcoFriendly) {
+        ecoFriendlyPercentage += Number(mp.percentage);
+      }
+    }
+
+    if (ecoFriendlyPercentage >= 95) {
+      return RecyclabilityStatus.FULLY_RECYCLABLE;
+    } else if (ecoFriendlyPercentage <= 5) {
+      return RecyclabilityStatus.NON_RECYCLABLE;
+    } else {
+      return RecyclabilityStatus.PARTIALLY_RECYCLABLE;
+    }
   }
 
   private calculateEcoBadgeLevel(

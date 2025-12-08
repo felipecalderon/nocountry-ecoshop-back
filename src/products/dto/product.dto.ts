@@ -90,14 +90,6 @@ export class CreateProductDto {
   @Type(() => Number)
   weightKg: number;
 
-  @ApiProperty({
-    description: 'Estado de reciclabilidad',
-    enum: RecyclabilityStatus,
-    example: RecyclabilityStatus.FULLY_RECYCLABLE,
-  })
-  @IsEnum(RecyclabilityStatus)
-  recyclabilityStatus: RecyclabilityStatus;
-
   @ApiPropertyOptional({
     description: 'Texto alternativo para la imagen',
     example: 'Camisa blanca...',
