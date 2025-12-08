@@ -1,11 +1,11 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty, IsString, MinLength } from 'class-validator';
+import { IsNotEmpty, IsString, IsUrl, MaxLength } from 'class-validator';
 
 export class CreateCertificationDto {
   @ApiProperty({ description: 'Nombre del sello', example: 'Cruelty Free' })
   @IsString()
   @IsNotEmpty()
-  @MinLength(2)
+  @MaxLength(100)
   name: string;
 
   @ApiProperty({
@@ -17,7 +17,10 @@ export class CreateCertificationDto {
   description: string;
 
   @ApiProperty({
-    description: 'URL del ícono o badge del sello',
+    description: 'URL de la imagen (badge) subida previamente',
+    example: 'https://res.cloudinary.com/.../badge.png',
   })
+  @IsUrl()
+  @IsNotEmpty()
   badgeUrl?: string;
 }

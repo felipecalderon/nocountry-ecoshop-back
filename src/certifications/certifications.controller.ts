@@ -1,18 +1,6 @@
-import {
-  Controller,
-  Get,
-  Post,
-  Body,
-  UseGuards,
-  UseInterceptors,
-  UploadedFile,
-  ParseFilePipe,
-  MaxFileSizeValidator,
-  FileTypeValidator,
-} from '@nestjs/common';
+import { Controller, Get, Post, Body, UseGuards } from '@nestjs/common';
 import { CertificationsService } from './certifications.service';
 import { CreateCertificationDto } from './dto/create-certification.dto';
-import { FileInterceptor } from '@nestjs/platform-express';
 import { FilesService } from 'src/files/files.service';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { RolesGuard } from 'src/auth/guards/roles.guard';
@@ -20,10 +8,9 @@ import { Roles } from 'src/auth/decorators/roles.decorator';
 import { UserRole } from 'src/users/entities/user.entity';
 import {
   ApiBearerAuth,
-  ApiConsumes,
   ApiOperation,
   ApiTags,
-  ApiBody,
+  ApiResponse,
 } from '@nestjs/swagger';
 
 @ApiTags('Certificaciones')
@@ -39,41 +26,8 @@ export class CertificationsController {
   @Roles(UserRole.ADMIN, UserRole.BRAND_ADMIN)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Crear nueva certificación' })
-  @ApiConsumes('multipart/form-data')
-  @ApiBody({
-    schema: {
-      type: 'object',
-      properties: {
-        name: {
-          type: 'string',
-          description: 'Nombre del sello',
-          example: 'Cruelty Free',
-        },
-        description: {
-          type: 'string',
-          description: 'Explicación del impacto',
-          example: 'Producto no testeado en animales.',
-        },
-        file: { type: 'string', format: 'binary' },
-      },
-    },
-  })
-  @UseInterceptors(FileInterceptor('file'))
-  async create(
-    @Body() createCertificationDto: CreateCertificationDto,
-    @UploadedFile(
-      new ParseFilePipe({
-        validators: [
-          new MaxFileSizeValidator({ maxSize: 1024 * 1024 * 2 }),
-          new FileTypeValidator({ fileType: /(jpg|jpeg|png|webp|svg)$/ }),
-        ],
-      }),
-    )
-    file: Express.Multer.File,
-  ) {
-    const image = await this.filesService.uploadImage(file);
-    createCertificationDto.badgeUrl = image.secure_url;
-
+  @ApiResponse({ status: 201, description: 'Certificación creada.' })
+  async create(@Body() createCertificationDto: CreateCertificationDto) {
     return this.certificationsService.create(createCertificationDto);
   }
 

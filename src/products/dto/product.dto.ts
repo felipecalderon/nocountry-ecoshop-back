@@ -1,4 +1,4 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger';
 import {
   IsString,
   IsNumber,
@@ -14,9 +14,7 @@ import {
   IsUUID,
   IsObject,
 } from 'class-validator';
-import { Transform, Type } from 'class-transformer';
-import { PartialType } from '@nestjs/mapped-types';
-
+import { Type } from 'class-transformer';
 import { RecyclabilityStatus } from '../entities/product.entity';
 import { EnvironmentalImpactDto } from './environmental-impact.dto';
 
@@ -35,15 +33,15 @@ export class CreateProductDto {
 
   @ApiProperty({
     description:
-      'URL de la imagen principal del producto (Se llena automáticamente tras subir archivo)',
-    example: 'https://res.cloudinary.com/...',
+      'URL de la imagen (obtenida previamente del endpoint /files/upload)',
+    example: 'https://res.cloudinary.com/demo/image/upload/v1/sample.jpg',
   })
-  @IsOptional()
-  @IsString()
+  @IsUrl({}, { message: 'Debe ser una URL válida' })
+  @IsNotEmpty()
   image: string;
 
   @ApiPropertyOptional({
-    description: 'Descripcion detallada del producto',
+    description: 'Descripción detallada del producto',
     example: 'Camisa fabricada con algodón...',
     maxLength: 5000,
   })
@@ -53,13 +51,13 @@ export class CreateProductDto {
   description?: string;
 
   @ApiProperty({
-    description: 'Precio del producto en dolares',
+    description: 'Precio del producto',
     example: 29.99,
     minimum: 0.01,
   })
-  @Transform(({ value }) => Number(value))
   @IsNumber({ maxDecimalPlaces: 2 })
   @Min(0.01)
+  @Type(() => Number)
   price: number;
 
   @ApiProperty({
@@ -67,13 +65,13 @@ export class CreateProductDto {
     example: 150,
     minimum: 0,
   })
-  @Transform(({ value }) => Number(value))
   @IsNumber({ maxDecimalPlaces: 0 })
   @Min(0)
+  @Type(() => Number)
   stock: number;
 
   @ApiPropertyOptional({
-    description: 'Pais de origen del producto',
+    description: 'País de origen',
     example: 'Argentina',
     maxLength: 100,
   })
@@ -83,17 +81,17 @@ export class CreateProductDto {
   originCountry?: string;
 
   @ApiProperty({
-    description: 'Peso del producto en kilogramos',
+    description: 'Peso en kilogramos',
     example: 3.2,
     minimum: 0,
   })
-  @Transform(({ value }) => Number(value))
   @IsNumber({ maxDecimalPlaces: 3 })
   @Min(0.0)
+  @Type(() => Number)
   weightKg: number;
 
   @ApiProperty({
-    description: 'Estado de reciclabildad del producto',
+    description: 'Estado de reciclabilidad',
     enum: RecyclabilityStatus,
     example: RecyclabilityStatus.FULLY_RECYCLABLE,
   })
@@ -111,40 +109,21 @@ export class CreateProductDto {
   imageAltText?: string;
 
   @ApiProperty({
-    description: 'Composicion de materiales del producto',
+    description: 'Composición de materiales e impacto',
     type: EnvironmentalImpactDto,
   })
-  @Transform(({ value }) => {
-    if (typeof value === 'string') {
-      try {
-        return JSON.parse(value);
-      } catch (error) {
-        return value;
-      }
-    }
-    return value;
-  })
-  @IsObject({ message: 'environmentalImpact debe ser un objeto JSON válido' })
+  @IsObject()
   @ValidateNested()
   @Type(() => EnvironmentalImpactDto)
   environmentalImpact: EnvironmentalImpactDto;
 
   @ApiPropertyOptional({
-    description: 'IDs de las certificados del producto',
+    description: 'IDs de las certificaciones',
     type: [String],
+    example: ['uuid-1', 'uuid-2'],
   })
   @IsOptional()
   @IsArray()
-  @Transform(({ value }) => {
-    if (typeof value === 'string') {
-      try {
-        return value.includes('[') ? JSON.parse(value) : value.split(',');
-      } catch (e) {
-        return [value];
-      }
-    }
-    return value;
-  })
   @IsUUID('4', { each: true })
   certificationIds?: string[];
 }

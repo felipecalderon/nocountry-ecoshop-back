@@ -1,25 +1,14 @@
-import {
-  BadRequestException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Order, OrderStatus } from './entities/order.entity';
 import { DataSource, Repository } from 'typeorm';
-import { CreateOrderDto } from 'src/orders/dto/create-order.dto';
-import { User } from 'src/users/entities/user.entity';
-import { Address } from 'src/addresses/entities/address.entity';
-import { Product } from 'src/products/entities/product.entity';
-import { OrderItem } from './entities/order-item.entity';
-import { ImpactStatsDto } from './dto/impact-stats.dto';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import {
-  BrandSaleEvent,
-  OrderPaidEvent,
-  StockAlertEvent,
-} from 'src/notifications/notifications.service';
-import { OrderPaidWalletEvent } from 'src/wallet/listeners/order-paid.event';
-import { Coupon } from 'src/wallet/entities/coupon.entity';
+import { Order, OrderStatus } from './entities/order.entity';
+import { OrderItem } from './entities/order-item.entity';
+import { CreateOrderDto } from './dto/create-order.dto';
+import { User } from 'src/users/entities/user.entity';
+import { ImpactStatsDto } from './dto/impact-stats.dto';
+import { OrdersHelper } from './helper/orders.helper';
+import { OrdersNotificationHelper } from './helper/orders-notification.helper';
 
 @Injectable()
 export class OrdersService {
@@ -28,127 +17,69 @@ export class OrdersService {
     private readonly orderRepository: Repository<Order>,
     private readonly dataSource: DataSource,
     private readonly eventEmitter: EventEmitter2,
+    private readonly ordersHelper: OrdersHelper,
+    private readonly ordersNotificationHelper: OrdersNotificationHelper,
   ) {}
 
   async create(createOrderDto: CreateOrderDto, user: User) {
     const { addressId, items, couponCode } = createOrderDto;
-    const stockAlerts: StockAlertEvent[] = [];
+
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
 
     try {
-      const address = await queryRunner.manager.findOne(Address, {
-        where: { id: addressId, user: { id: user.id } },
-      });
-      if (!address)
-        throw new NotFoundException('Dirección de envío no encontrada');
+      await this.ordersHelper.validateAddress(
+        addressId,
+        user.id,
+        queryRunner.manager,
+      );
+
+      const { orderItems, totalPrice, totalCarbonFootprint, stockAlerts } =
+        await this.ordersHelper.processOrderItems(items, queryRunner.manager);
 
       const newOrder = new Order();
       newOrder.user = user;
       newOrder.status = OrderStatus.PENDING;
-      newOrder.totalPrice = 0;
-      newOrder.totalCarbonFootprint = 0;
-      newOrder.items = [];
-
-      for (const itemDto of items) {
-        const product = await queryRunner.manager.findOne(Product, {
-          where: { id: itemDto.productId },
-          relations: ['environmentalImpact', 'brand', 'brand.owner'],
-        });
-
-        if (!product) {
-          throw new NotFoundException('Producto no encontrado');
-        }
-
-        if (product.stock < itemDto.quantity) {
-          throw new BadRequestException(
-            `Stock insuficiente para el producto: ${product.name}`,
-          );
-        }
-
-        const orderItem = new OrderItem();
-        orderItem.product = product;
-        orderItem.quantity = itemDto.quantity;
-
-        orderItem.priceAtPurchase = product.price;
-
-        const realEcoImpact = Number(
-          product.environmentalImpact?.carbonFootprint || 0,
-        );
-        orderItem.carbonFootprintSnapshot = realEcoImpact;
-
-        newOrder.totalPrice += Number(product.price) * itemDto.quantity;
-        newOrder.totalCarbonFootprint += realEcoImpact * itemDto.quantity;
-
-        product.stock -= itemDto.quantity;
-        await queryRunner.manager.save(product);
-
-        if (product.stock === 0 || product.stock <= 5) {
-          stockAlerts.push({
-            email: product.brand.owner.email,
-            brandName: product.brand.name,
-            productName: product.name,
-            stock: product.stock,
-          });
-        }
-
-        newOrder.items.push(orderItem);
-      }
+      newOrder.totalPrice = totalPrice;
+      newOrder.totalCarbonFootprint = totalCarbonFootprint;
+      newOrder.items = orderItems;
 
       if (couponCode) {
-        const coupon = await queryRunner.manager.findOne(Coupon, {
-          where: { code: couponCode },
-          relations: ['user'],
-        });
-
-        if (!coupon) {
-          throw new NotFoundException('El código de descuento no es válido.');
-        }
-
-        if (coupon.isUsed) {
-          throw new BadRequestException('Este cupón ya ha sido utilizado.');
-        }
-
-        if (coupon.user.id !== user.id) {
-          throw new BadRequestException(
-            'Este cupón no pertenece a tu usuario.',
+        const { discountAmount } =
+          await this.ordersHelper.validateAndApplyCoupon(
+            couponCode,
+            user,
+            newOrder.totalPrice,
+            queryRunner.manager,
           );
-        }
-
-        if (coupon.expiresAt && new Date() > coupon.expiresAt) {
-          throw new BadRequestException('El cupón ha expirado.');
-        }
-
-        const discountAmount =
-          (newOrder.totalPrice * coupon.discountPercentage) / 100;
-
         newOrder.totalPrice = Math.max(0, newOrder.totalPrice - discountAmount);
-
-        coupon.isUsed = true;
-        await queryRunner.manager.save(coupon);
       }
 
       const savedOrder = await queryRunner.manager.save(Order, newOrder);
 
-      for (const item of newOrder.items) {
+      for (const item of orderItems) {
         item.order = savedOrder;
         await queryRunner.manager.save(OrderItem, item);
       }
 
       await queryRunner.commitTransaction();
 
+      stockAlerts.forEach((alert) =>
+        this.eventEmitter.emit('stock.alert', alert),
+      );
+
       return {
         orderId: savedOrder.id,
         totalPrice: savedOrder.totalPrice,
         totalCarbonFootprint: savedOrder.totalCarbonFootprint,
         message: couponCode
-          ? `Orden creada con éxito. Descuento aplicado.`
+          ? 'Orden creada con éxito. Descuento aplicado.'
           : 'Orden creada con éxito.',
       };
     } catch (error) {
       await queryRunner.rollbackTransaction();
-      throw error;
+      this.ordersHelper.handleDBExceptions(error);
     } finally {
       await queryRunner.release();
     }
@@ -168,101 +99,13 @@ export class OrdersService {
       relations: ['user'],
     });
 
-    if (!order) {
-      return;
-    }
+    if (!order) return;
+    if (order.status !== OrderStatus.PENDING) return;
 
-    if (order.status !== OrderStatus.PENDING) {
-      return;
-    }
-
-    this.notifyUserSuccess(order);
-
-    await this.notifyBrandsOfSale(orderId);
-
-    const walletEvent = new OrderPaidWalletEvent();
-    walletEvent.orderId = order.id;
-    walletEvent.userId = order.user.id;
-    walletEvent.totalAmount = Number(order.totalPrice);
-    const co2 = Number(order.totalCarbonFootprint);
-    walletEvent.totalCo2Saved = !isNaN(co2) ? co2 : 0;
-
-    this.eventEmitter.emit('order.paid', walletEvent);
+    await this.ordersNotificationHelper.processSuccessfulPayment(order);
 
     order.status = OrderStatus.PAID;
     await this.orderRepository.save(order);
-  }
-
-  private notifyUserSuccess(order: Order): void {
-    const eventPayload: OrderPaidEvent = {
-      orderId: order.id,
-      email: order.user.email,
-      name: order.user.firstName || 'Eco-Amigo',
-      totalPrice: Number(order.totalPrice),
-      co2Saved: Number(order.totalCarbonFootprint),
-    };
-
-    this.eventEmitter.emit('order.paid', eventPayload);
-  }
-
-  private async notifyBrandsOfSale(orderId: string): Promise<void> {
-    const fullOrder = await this.orderRepository.findOne({
-      where: { id: orderId },
-      relations: [
-        'items',
-        'items.product',
-        'items.product.brand',
-        'items.product.brand.owner',
-      ],
-    });
-
-    if (!fullOrder) return;
-
-    const brandGroups = this.groupItemsByBrand(fullOrder);
-
-    for (const group of brandGroups.values()) {
-      this.eventEmitter.emit('brand.sale', group);
-    }
-  }
-
-  private groupItemsByBrand(order: Order): Map<string, BrandSaleEvent> {
-    const groups = new Map<string, BrandSaleEvent>();
-
-    for (const item of order.items) {
-      const brand = item.product.brand;
-      const brandId = brand.id;
-
-      if (!groups.has(brandId)) {
-        groups.set(brandId, {
-          email: brand.owner.email,
-          brandName: brand.name,
-          items: [],
-          totalRevenue: 0,
-        });
-      }
-
-      let group = groups.get(brandId);
-
-      if (!group) {
-        group = {
-          email: brand.owner.email,
-          brandName: brand.name,
-          items: [],
-          totalRevenue: 0,
-        };
-        groups.set(brandId, group);
-      }
-
-      group.items.push({
-        productName: item.product.name,
-        quantity: item.quantity,
-        price: Number(item.priceAtPurchase),
-      });
-
-      group.totalRevenue += Number(item.priceAtPurchase) * item.quantity;
-    }
-
-    return groups;
   }
 
   async getUserImpactStats(userId: string): Promise<ImpactStatsDto> {
@@ -276,29 +119,16 @@ export class OrdersService {
 
     const co2Val = Number(totalCo2) || 0;
     const ordersCount = Number(count) || 0;
-
     const trees = Math.floor(co2Val / 21);
 
-    let ecoLevel = 'Semilla';
-    let nextLevelGoal = 10;
-
-    if (co2Val >= 10 && co2Val < 50) {
-      ecoLevel = 'Brote Consciente';
-      nextLevelGoal = 50;
-    } else if (co2Val >= 50 && co2Val < 200) {
-      ecoLevel = 'Guardián del Bosque';
-      nextLevelGoal = 200;
-    } else if (co2Val >= 200) {
-      ecoLevel = 'Héroe Climático';
-      nextLevelGoal = 1000;
-    }
+    const { level, nextGoal } = this.ordersHelper.calculateEcoLevel(co2Val);
 
     return {
       totalOrders: ordersCount,
       co2SavedKg: Number(co2Val.toFixed(2)),
       treesEquivalent: trees,
-      ecoLevel,
-      nextLevelGoal,
+      ecoLevel: level,
+      nextGoal,
     };
   }
 }
