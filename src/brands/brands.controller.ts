@@ -64,7 +64,7 @@ export class BrandsController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Ver órdenes que contienen mis productos' })
   async getMyOrders(@GetUser() user: User) {
-    return this.brandsService.findBrandOrders(user);
+    return this.brandsService.findBrandOrders(user.id);
   }
 
   @Patch('orders/:id/status')
@@ -107,6 +107,6 @@ export class BrandsController {
     description: 'Acceso denegado (Requiere rol BRAND_ADMIN o ADMIN).',
   })
   async getBrandStats(@GetUser() user: User) {
-    return this.brandsService.getBrandStats(user);
+    return this.brandsService.getBrandStats(user.id);
   }
 }
