@@ -102,6 +102,15 @@ export class CreateProductDto {
 
   @ApiProperty({
     description: 'Composición de materiales e impacto',
+    example: {
+      recycledContent: 0,
+      materials: [
+        {
+          materialCompositionId: '0ac2bb70-caf6-11f0-af05-a2aab49033e9',
+          percentage: 100,
+        },
+      ],
+    },
     type: EnvironmentalImpactDto,
   })
   @IsObject()

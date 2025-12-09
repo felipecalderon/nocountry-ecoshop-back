@@ -7,6 +7,7 @@ import { CreateProductDto, UpdateProductDto } from './dto/product.dto';
 import { BrandsService } from 'src/brands/brands.service';
 import { CertificationsService } from 'src/certifications/certifications.service';
 import { ProductsHelper } from './helpers/products.helper';
+import { User } from 'src/users/entities/user.entity';
 
 @Injectable()
 export class ProductsService {
@@ -65,6 +66,23 @@ export class ProductsService {
       this.productsHelper.handleDBExceptions(
         error,
         `Error al buscar productos de la marca ${brandId}`,
+      );
+    }
+  }
+
+  async findAllByOwner(userId: string): Promise<Product[] | void> {
+    try {
+      const brand = await this.brandsService.findOneByOwnerId(userId);
+
+      if (!brand) {
+        return [];
+      }
+
+      return await this.findByBrand(brand.id);
+    } catch (error) {
+      this.productsHelper.handleDBExceptions(
+        error,
+        'Error al buscar los productos de tu marca',
       );
     }
   }
@@ -142,7 +160,7 @@ export class ProductsService {
   async update(
     id: string,
     changes: UpdateProductDto,
-    ownerId: string,
+    user: User,
   ): Promise<Product | void> {
     let { environmentalImpact, certificationIds, ...productDetails } = changes;
 
@@ -153,10 +171,7 @@ export class ProductsService {
     }
 
     const productToUpdate = await this.findOne(id);
-    await this.productsHelper.validateProductOwnership(
-      productToUpdate,
-      ownerId,
-    );
+    await this.productsHelper.validateProductOwnership(productToUpdate, user);
 
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();

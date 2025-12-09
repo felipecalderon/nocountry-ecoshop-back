@@ -16,6 +16,7 @@ import {
 } from '../entities/environmental-impact.entity';
 import { MaterialProduct } from '../entities/material-product.entity';
 import { MaterialProductDto } from '../dto/material-product.dto';
+import { User, UserRole } from 'src/users/entities/user.entity';
 
 @Injectable()
 export class ProductsHelper {
@@ -38,18 +39,23 @@ export class ProductsHelper {
       );
     }
     const total = materials.reduce((sum, mat) => sum + mat.percentage, 0);
-    if (total !== 100) {
+    if (total > 100) {
       throw new BadRequestException(
-        'La suma de los porcentajes de materiales debe ser 100%',
+        'La suma de los porcentajes de materiales no debe ser mayor al 100%',
       );
     }
   }
 
-  async validateProductOwnership(
-    product: Product,
-    ownerId: string,
-  ): Promise<void> {
-    const userBrand = await this.brandsService.findOneByOwnerId(ownerId);
+  async validateProductOwnership(product: Product, user: User): Promise<void> {
+    if (user.role.includes(UserRole.ADMIN)) {
+      return;
+    }
+    const userBrand = await this.brandsService.findOneByOwnerId(user.id);
+
+    if (!userBrand) {
+      throw new BadRequestException('El usuario no tiene una marca asociada.');
+    }
+
     if (product.brand.id !== userBrand.id) {
       throw new BadRequestException(
         'No tienes permiso para modificar este producto.',
@@ -75,9 +81,6 @@ export class ProductsHelper {
     };
   }
 
-  /**
-   * Procesa la composición de materiales buscando en la DB y calculando factores totales
-   */
   async processMaterialComposition(
     materials: MaterialProductDto[],
     product: Product,
