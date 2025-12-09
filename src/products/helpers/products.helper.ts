@@ -39,9 +39,9 @@ export class ProductsHelper {
       );
     }
     const total = materials.reduce((sum, mat) => sum + mat.percentage, 0);
-    if (total !== 100) {
+    if (total > 100) {
       throw new BadRequestException(
-        'La suma de los porcentajes de materiales debe ser 100%',
+        'La suma de los porcentajes de materiales no debe ser mayor al 100%',
       );
     }
   }
