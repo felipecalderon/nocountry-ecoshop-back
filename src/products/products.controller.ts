@@ -23,7 +23,7 @@ import { Product } from './entities/product.entity';
 import { CreateProductDto, UpdateProductDto } from './dto/product.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { GetUser } from '../auth/decorators/get-user.decorator';
-import { UserRole } from '../users/entities/user.entity';
+import { User, UserRole } from '../users/entities/user.entity';
 import { Roles } from 'src/auth/decorators/roles.decorator';
 import { RolesGuard } from 'src/auth/guards/roles.guard';
 import { FilesService } from 'src/files/files.service';
@@ -65,7 +65,7 @@ export class ProductsController {
       'Obtiene una lista de los productos de la marca del usuario registrado.',
   })
   async findMyBrand(@GetUser('id') userId: string) {
-    return await this.productsService.findByBrand(userId);
+    return await this.productsService.findAllByOwner(userId);
   }
 
   @Get(':term')
@@ -129,9 +129,9 @@ export class ProductsController {
   update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() updateProductDto: UpdateProductDto,
-    @GetUser('id') ownerId: string,
+    @GetUser() user: User,
   ) {
-    return this.productsService.update(id, updateProductDto, ownerId);
+    return this.productsService.update(id, updateProductDto, user);
   }
 
   @Delete(':id')
