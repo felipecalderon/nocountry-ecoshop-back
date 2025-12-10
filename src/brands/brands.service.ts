@@ -12,6 +12,7 @@ import { User } from 'src/users/entities/user.entity';
 import { Order, OrderStatus } from 'src/orders/entities/order.entity';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { OrderShippedEvent } from 'src/notifications/notifications.service';
+import { OrderItem } from 'src/orders/entities/order-item.entity';
 
 @Injectable()
 export class BrandsService {
@@ -20,6 +21,8 @@ export class BrandsService {
     private readonly brandRepository: Repository<Brand>,
     @InjectRepository(Order)
     private readonly orderRepository: Repository<Order>,
+    @InjectRepository(OrderItem)
+    private readonly orderItemRepository: Repository<OrderItem>,
     private readonly eventEmitter: EventEmitter2,
   ) {}
 
@@ -58,24 +61,16 @@ export class BrandsService {
     });
   }
 
-  async findBrandOrders(user: User) {
-    const brand = await this.brandRepository.findOne({
-      where: { owner: { id: user.id } },
-    });
-
-    if (!brand) {
-      throw new BadRequestException(
-        'No tienes una marca registrada para ver ventas.',
-      );
-    }
+  async findBrandOrders(userId: string) {
+    const brand = await this.findOneByOwnerId(userId);
+    if (!brand) return [];
 
     return this.orderRepository
       .createQueryBuilder('order')
       .leftJoinAndSelect('order.items', 'item')
       .leftJoinAndSelect('item.product', 'product')
-      .leftJoinAndSelect('order.user', 'customer')
-      .where('product.brand_id = :brandId', { brandId: brand.id })
-      .andWhere('order.status != :pending', { pending: 'pending' })
+      .leftJoinAndSelect('order.user', 'user')
+      .where('product.brandId = :brandId', { brandId: brand.id })
       .orderBy('order.createdAt', 'DESC')
       .getMany();
   }
@@ -117,26 +112,24 @@ export class BrandsService {
     return savedOrder;
   }
 
-  async getBrandStats(user: User) {
-    const brand = await this.brandRepository.findOne({
-      where: { owner: { id: user.id } },
-    });
-    if (!brand) throw new BadRequestException('No tienes marca.');
+  async getBrandStats(userId: string) {
+    const brand = await this.findOneByOwnerId(userId);
+    if (!brand) throw new NotFoundException('No tienes una marca registrada');
 
-    const stats = await this.orderRepository
-      .createQueryBuilder('order')
-      .innerJoin('order.items', 'item')
-      .innerJoin('item.product', 'product')
+    const stats = await this.orderItemRepository
+      .createQueryBuilder('item')
+      .leftJoin('item.product', 'product')
+      .leftJoin('item.order', 'order')
+      .where('product.brandId = :brandId', { brandId: brand.id })
+      .andWhere('order.status = :status', { status: OrderStatus.PAID })
       .select('SUM(item.priceAtPurchase * item.quantity)', 'totalRevenue')
-      .addSelect('SUM(item.quantity)', 'totalUnitsSold')
+      .addSelect('SUM(item.quantity)', 'totalUnits')
       .addSelect('COUNT(DISTINCT order.id)', 'totalOrders')
-      .where('product.brand_id = :brandId', { brandId: brand.id })
-      .andWhere('order.status != :pending', { pending: 'pending' })
       .getRawOne();
 
     return {
       totalRevenue: Number(stats.totalRevenue) || 0,
-      totalUnitsSold: Number(stats.totalUnitsSold) || 0,
+      totalUnitsSold: Number(stats.totalUnits) || 0,
       totalOrders: Number(stats.totalOrders) || 0,
     };
   }

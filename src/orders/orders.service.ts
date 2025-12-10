@@ -131,4 +131,24 @@ export class OrdersService {
       nextGoal,
     };
   }
+
+  async findAllOrdersAdmin(page: number = 1, limit: number = 10) {
+    const skip = (page - 1) * limit;
+
+    const [orders, total] = await this.orderRepository.findAndCount({
+      relations: ['user', 'items', 'items.product'],
+      order: { createdAt: 'DESC' },
+      take: limit,
+      skip: skip,
+    });
+
+    return {
+      data: orders,
+      meta: {
+        total,
+        page,
+        lastPage: Math.ceil(total / limit),
+      },
+    };
+  }
 }

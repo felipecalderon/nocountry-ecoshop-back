@@ -16,6 +16,7 @@ import { RedeemPointsDto } from '../dto/redeem-points.dto';
 import { CreateRewardDto } from '../dto/create-reward.dto';
 import { Coupon } from '../entities/coupon.entity';
 import * as crypto from 'crypto';
+import { AdjustPointsDto } from '../dto/adjust-points.dto';
 
 @Injectable()
 export class WalletService {
@@ -201,5 +202,29 @@ export class WalletService {
   private generateCouponCode(): string {
     const suffix = crypto.randomBytes(3).toString('hex').toUpperCase();
     return `ECO-${suffix}`;
+  }
+
+  async manualAdjustment(adminId: string, adjustDto: AdjustPointsDto) {
+    const { userId, amount, description } = adjustDto;
+
+    const result = await this.addPoints(
+      userId,
+      amount,
+      `AJUSTE ADMIN: ${description}`,
+      { adjustedBy: adminId },
+    );
+
+    return {
+      message: `Saldo ajustado en ${amount > 0 ? '+' : ''}${amount} puntos.`,
+      ...result,
+    };
+  }
+
+  async deleteReward(id: string) {
+    const reward = await this.rewardRepository.findOne({ where: { id } });
+    if (!reward) throw new NotFoundException('Recompensa no encontrada');
+
+    reward.isActive = false;
+    return await this.rewardRepository.save(reward);
   }
 }

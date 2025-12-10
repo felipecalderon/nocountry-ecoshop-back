@@ -65,7 +65,7 @@ export class UsersController {
     return this.usersService.update(userId, updateUserDto);
   }
 
-  @Post('profile/image')
+  @Patch('profile/image')
   @ApiOperation({
     summary: 'Actualizar foto de perfil',
     description:

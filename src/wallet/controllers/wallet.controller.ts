@@ -1,9 +1,12 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpStatus,
+  Param,
   Post,
+  Req,
   UseGuards,
 } from '@nestjs/common';
 import { WalletService } from '../services/wallet.service';
@@ -16,10 +19,12 @@ import {
 } from '@nestjs/swagger';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { GetUser } from 'src/auth/decorators/get-user.decorator';
-import { User } from 'src/users/entities/user.entity';
+import { User, UserRole } from 'src/users/entities/user.entity';
 import { RedeemPointsDto } from '../dto/redeem-points.dto';
 import { RolesGuard } from 'src/auth/guards/roles.guard';
 import { CreateRewardDto } from '../dto/create-reward.dto';
+import { Roles } from 'src/auth/decorators/roles.decorator';
+import { AdjustPointsDto } from '../dto/adjust-points.dto';
 
 @ApiTags('Eco-Wallet')
 @Controller('wallet')
@@ -116,5 +121,24 @@ export class WalletController {
   })
   async getMyCoupons(@GetUser() user: User) {
     return this.walletService.getMyCoupons(user.id, true);
+  }
+
+  @Post('points/adjust')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({
+    summary: 'Ajustar manualmente los puntos de un usuario (Admin)',
+  })
+  async adjustPoints(@Body() adjustDto: AdjustPointsDto, @Req() req) {
+    const adminId = req.user.id;
+    return this.walletService.manualAdjustment(adminId, adjustDto);
+  }
+
+  @Delete('rewards/:id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Desactivar una recompensa' })
+  async deleteReward(@Param('id') id: string) {
+    return this.walletService.deleteReward(id);
   }
 }
