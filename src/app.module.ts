@@ -18,9 +18,11 @@ import { APP_INTERCEPTOR } from '@nestjs/core';
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
 import { MaterialCompositionModule } from './material-composition/material-composition.module';
 import { WalletModule } from './wallet/wallet.module';
+import { SeedModule } from './seed/seed.module';
 
 @Module({
   imports: [
+    SeedModule,
     DataBaseModule,
     UsersModule,
     ProductsModule,
