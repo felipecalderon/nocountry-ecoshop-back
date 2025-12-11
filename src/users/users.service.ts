@@ -18,6 +18,35 @@ export class UsersService {
     private readonly eventEmitter: EventEmitter2,
   ) {}
 
+  async create(userData: Partial<User>): Promise<User> {
+    const { email } = userData;
+
+    if (!email) {
+      throw new BadRequestException(
+        'El email es obligatorio para crear un usuario.',
+      );
+    }
+
+    const existingUser = await this.userRepository.findOne({
+      where: { email },
+    });
+    if (existingUser) {
+      return existingUser;
+    }
+
+    const newUser = this.userRepository.create({
+      ...userData,
+      providerId:
+        userData.providerId ||
+        `local-seed-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      emailVerified: true,
+    });
+
+    const savedUser = await this.userRepository.save(newUser);
+
+    return savedUser;
+  }
+
   async findOrCreateFromProvider(payload: JwtPayload): Promise<User> {
     const namespace = 'https://api.ecoshop.com';
     const picture = payload[`${namespace}/picture`] || payload.picture;
@@ -90,5 +119,12 @@ export class UsersService {
     const user = await this.findOne(id);
     user.profileImage = imageUrl;
     return this.userRepository.save(user);
+  }
+
+  async findByEmail(email: string) {
+    const user = await this.userRepository.findOne({ where: { email: email } });
+    if (!user)
+      throw new NotFoundException(`Usuario con email: ${email} no encontrado.`);
+    return user;
   }
 }
