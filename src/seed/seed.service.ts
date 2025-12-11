@@ -1,16 +1,11 @@
 import { Injectable, Logger } from '@nestjs/common';
-
-// Servicios de tus módulos
 import { ProductsService } from 'src/products/products.service';
 import { BrandsService } from 'src/brands/brands.service';
 import { UsersService } from 'src/users/users.service';
 import { MaterialCompositionService } from 'src/material-composition/material-composition.service';
 import { CertificationsService } from 'src/certifications/certifications.service';
 import { WalletService } from 'src/wallet/services/wallet.service';
-
-// DTOs y Enums necesarios
 import { CreateProductDto } from 'src/products/dto/product.dto';
-import { RecyclabilityStatus } from 'src/products/entities/product.entity';
 import { RewardType } from 'src/wallet/entities/reward.entity';
 import { CreateMaterialCompositionDto } from 'src/material-composition/dto/material-composition.dto';
 import { UserRole } from 'src/users/entities/user.entity';
@@ -32,81 +27,65 @@ export class SeedService {
     this.logger.log('🌱 INICIANDO PROCESO DE SEEDING...');
     const start = Date.now();
 
-    // 1. Usuarios y Marcas (Necesarios para ser dueños de los productos)
-    const brandOwner = await this.seedUsersAndBrand();
+    try {
+      const brandOwner = await this.seedUsersAndBrand();
 
-    // 2. Datos Maestros (Materiales y Certificaciones)
-    await this.seedMasterData();
+      await this.seedMasterData();
 
-    // 3. Productos (Usando IDs reales buscados en DB y el usuario dueño)
-    await this.seedProducts(brandOwner.id);
+      await this.seedProducts(brandOwner.id);
 
-    // 4. Recompensas de Wallet (Cupones y Donaciones)
-    await this.seedRewards();
+      await this.seedRewards();
 
-    const time = Date.now() - start;
-    this.logger.log(`✅ SEEDING FINALIZADO exitosamente en ${time}ms`);
-    return {
-      message: 'Base de datos poblada exitosamente',
-      duration: `${time}ms`,
-    };
+      const time = Date.now() - start;
+      this.logger.log(`✅ SEEDING FINALIZADO exitosamente en ${time}ms`);
+      return {
+        message: 'Base de datos poblada exitosamente',
+        duration: `${time}ms`,
+      };
+    } catch (error) {
+      this.logger.error('❌ Error fatal en el seeder:', error);
+      throw error;
+    }
   }
-
-  // --- MÉTODOS PRIVADOS DE CARGA ---
 
   private async seedUsersAndBrand() {
     this.logger.log('👤 Verificando usuario administrador de marca...');
 
-    // NOTA: Para el MVP, usamos un email fijo que coincida con tu login de Auth0
-    // Si el usuario no existe en tu DB local, el seed fallará intencionalmente
-    // para obligarte a hacer el login inicial o puedes mockear la creación aquí.
     const demoEmail = 'brandadmin@demo.com';
     let user;
 
     try {
       user = await this.usersService.findByEmail(demoEmail);
-    } catch (error) {
-      // Si no existe, user queda undefined
-    }
+    } catch (error) {}
 
     if (!user) {
-      this.logger.log(
-        `⚠️ Usuario ${demoEmail} no encontrado. Creando usuario local para seeding...`,
-      );
+      this.logger.log(`⚠️ Usuario no encontrado. Creando ${demoEmail}...`);
 
-      // CREACIÓN AUTOMÁTICA DEL USUARIO
-      // Asumimos que tu usersService.create acepta estos datos básicos.
-      // Si tu lógica de Auth0 es estricta, aquí estamos simulando un usuario "ya validado".
       user = await this.usersService.create({
         email: demoEmail,
         firstName: 'Brand',
         lastName: 'Admin',
-        roles: [UserRole.ADMIN], // Asignamos rol de marca importante
-        // password: 'Password123!', // Descomentar si tu modelo local usa password
-      } as any); // Casteo a 'any' por si tu DTO es muy estricto con campos opcionales
+        roles: [UserRole.BRAND_ADMIN],
+        providerId: `seed-${Date.now()}`,
+      } as any);
 
-      this.logger.log(`✅ Usuario creado: ${user.email} (ID: ${user.id})`);
+      this.logger.log(`✅ Usuario creado ID: ${user.id}`);
     } else {
       this.logger.log(`👤 Usuario existente encontrado: ${user.email}`);
     }
 
-    // Crear Marca para este usuario si no tiene una
     const brandName = 'EcoShop Official Brand';
     let existingBrand;
 
     try {
       existingBrand = await this.brandsService.findOneByOwnerId(user.id);
-    } catch (error) {
-      // Si entra aquí, es que no tiene marca (404), lo cual es perfecto para crearla.
-      // No hacemos nada, dejamos existingBrand como null.
-    }
+    } catch (error) {}
 
     if (!existingBrand) {
       await this.brandsService.create(
         {
           name: brandName,
-          description:
-            'Marca oficial de demostración para EcoShop MVP. Productos 100% sostenibles.',
+          description: 'Marca oficial de demostración para EcoShop MVP.',
           logoUrl:
             'https://res.cloudinary.com/dclnfdcbf/image/upload/v1/logo-ecoshop.png',
         },
@@ -123,7 +102,6 @@ export class SeedService {
   private async seedMasterData() {
     this.logger.log('🧪 Cargando Materiales y Certificaciones...');
 
-    // --- MATERIALES ---
     const materials: CreateMaterialCompositionDto[] = [
       {
         name: 'Algodón Orgánico',
@@ -144,6 +122,12 @@ export class SeedService {
         waterUsagePerKg: 50,
       },
       {
+        name: 'Poliéster Vírgen',
+        isEcoFriendly: false,
+        carbonFootprintPerKg: 5.5,
+        waterUsagePerKg: 50,
+      },
+      {
         name: 'Plástico Virgen',
         isEcoFriendly: false,
         carbonFootprintPerKg: 6.0,
@@ -161,81 +145,132 @@ export class SeedService {
         carbonFootprintPerKg: 2.5,
         waterUsagePerKg: 100,
       },
+      {
+        name: 'Cáñamo (Hemp)',
+        isEcoFriendly: true,
+        carbonFootprintPerKg: 2.9,
+        waterUsagePerKg: 300,
+      },
+      {
+        name: 'Nylon Regenerado (Econyl)',
+        isEcoFriendly: true,
+        carbonFootprintPerKg: 3.0,
+        waterUsagePerKg: 80,
+      },
+      {
+        name: 'Vidrio Reciclado',
+        isEcoFriendly: true,
+        carbonFootprintPerKg: 0.4,
+        waterUsagePerKg: 10,
+      },
+      {
+        name: 'Lana Merino Responsable',
+        isEcoFriendly: true,
+        carbonFootprintPerKg: 12.0,
+        waterUsagePerKg: 500,
+      },
+      {
+        name: 'Lino',
+        isEcoFriendly: true,
+        carbonFootprintPerKg: 1.9,
+        waterUsagePerKg: 2500,
+      },
+      {
+        name: 'Tencel™ (Lyocell)',
+        isEcoFriendly: true,
+        carbonFootprintPerKg: 1.5,
+        waterUsagePerKg: 150,
+      },
     ];
 
     for (const mat of materials) {
       try {
-        // Verificamos si existe por nombre para no duplicar en cada seed
-        // (Asumiendo que no tienes un método findByName, intentamos crear y capturamos error de unique)
         await this.materialService.create(mat);
       } catch (e) {
-        // Ignoramos error de duplicado silenciosamente
+        if (
+          !e.message?.includes('Duplicate') &&
+          !e.message?.includes('unique')
+        ) {
+          this.logger.error(`Error creando material ${mat.name}: ${e.message}`);
+        }
       }
     }
 
-    // --- CERTIFICACIONES ---
     const certs = [
       {
-        name: 'Fair Trade',
-        description: 'Comercio Justo Garantizado',
+        name: 'Fair Trade Certified (Comercio Justo)',
+        description: 'Comercio Justo',
         badgeUrl:
           'https://res.cloudinary.com/dclnfdcbf/image/upload/v1/badges/fair-trade.png',
       },
       {
-        name: 'GOTS',
-        description: 'Global Organic Textile Standard',
+        name: 'GOTS (Global Organic Textile Standard)',
+        description: 'Orgánico',
         badgeUrl:
           'https://res.cloudinary.com/dclnfdcbf/image/upload/v1/badges/gots.png',
       },
       {
-        name: 'Leaping Bunny',
-        description: 'Libre de Crueldad Animal',
+        name: 'Leaping Bunny (Cruelty Free)',
+        description: 'Cruelty Free',
         badgeUrl:
           'https://res.cloudinary.com/dclnfdcbf/image/upload/v1/badges/cruelty-free.png',
+      },
+      {
+        name: 'FSC (Forest Stewardship Council)',
+        description: 'Forestal',
+        badgeUrl:
+          'https://res.cloudinary.com/dclnfdcbf/image/upload/v1/badges/fsc.png',
+      },
+      {
+        name: 'Carbon Neutral Certified',
+        description: 'Neutro',
+        badgeUrl:
+          'https://res.cloudinary.com/dclnfdcbf/image/upload/v1/badges/carbon-neutral.png',
       },
     ];
 
     for (const cert of certs) {
       try {
         await this.certService.create(cert);
-      } catch (e) {}
+      } catch (e) {
+        if (
+          !e.message?.includes('Duplicate') &&
+          !e.message?.includes('unique')
+        ) {
+          this.logger.error(
+            `Error creando certificación ${cert.name}: ${e.message}`,
+          );
+        }
+      }
     }
   }
 
   private async seedProducts(ownerId: string) {
     this.logger.log('👕 Creando Productos...');
 
-    // 1. Recuperar IDs reales de la DB para armar las relaciones
     const allMaterials = await this.materialService.findAll();
     const allCerts = await this.certService.findAll();
 
-    // Helpers para buscar IDs rápido
     const getMatId = (name: string) =>
       allMaterials.find((m) => m.name.includes(name))?.id;
     const getCertId = (name: string) =>
       allCerts.find((c) => c.name.includes(name))?.id;
 
-    // Validación básica
     if (!getMatId('Algodón Orgánico')) {
-      this.logger.error(
-        '❌ Error crítico: Materiales base no encontrados. Verifica el paso anterior.',
-      );
+      this.logger.error('❌ Error crítico: Materiales base no encontrados.');
       return;
     }
 
-    // 2. Definición de Productos (Array JSON)
-    // Nota: recyclabilityStatus lo dejamos undefined o null, el servicio lo calcula solo ahora.
     const products: Partial<CreateProductDto>[] = [
       {
-        name: 'Remera Básica Eco',
-        description:
-          '100% Algodón orgánico suave. Ideal para pieles sensibles.',
+        name: "Camiseta Básica 'Pure Cotton'",
+        description: '100% Algodón orgánico suave.',
         price: 25.0,
-        stock: 100,
+        stock: 200,
         originCountry: 'Perú',
-        weightKg: 0.2,
+        weightKg: 0.25,
         image:
-          'https://res.cloudinary.com/dclnfdcbf/image/upload/v1/products/remera-eco.jpg',
+          'https://res.cloudinary.com/dclnfdcbf/image/upload/v1/products/remera-algodon-organico.jpg',
         environmentalImpact: {
           recycledContent: 0,
           materials: [
@@ -245,24 +280,102 @@ export class SeedService {
             },
           ],
         },
-        certificationIds: getCertId('Fair Trade')!
-          ? [getCertId('Fair Trade')!]
-          : [],
+        certificationIds: [getCertId('GOTS')].filter(Boolean) as string[],
       },
       {
-        name: 'Mochila Urbana Reciclada',
-        description: 'Hecha de botellas plásticas recuperadas del océano.',
-        price: 60.0,
-        stock: 50,
-        originCountry: 'Colombia',
-        weightKg: 0.8,
+        name: 'Mochila Urbana de Cáñamo',
+        description:
+          'Resistencia y sostenibilidad en una sola mochila. Fabricada con fibras de cáñamo duraderas y detalles en poliéster reciclado post-consumo.',
+        price: 65.0,
+        stock: 45,
+        originCountry: 'Nepal',
+        weightKg: 0.75,
         image:
-          'https://res.cloudinary.com/dclnfdcbf/image/upload/v1/products/mochila.jpg',
+          'https://res.cloudinary.com/dclnfdcbf/image/upload/v1/products/mochila-canamo.jpg',
+        imageAltText:
+          'Mochila color beige de textura natural con correas negras',
+        environmentalImpact: {
+          recycledContent: 40,
+          materials: [
+            { materialCompositionId: getMatId('Cáñamo')!, percentage: 60 },
+            {
+              materialCompositionId: getMatId('Poliéster Reciclado')!,
+              percentage: 40,
+            },
+          ],
+        },
+        certificationIds: [getCertId('Carbon Neutral')].filter(
+          Boolean,
+        ) as string[],
+      },
+      {
+        name: 'Zapatillas Deportivas de Bambú',
+        description:
+          'Calzado ligero y transpirable. El tejido de bambú ofrece propiedades antibacterianas naturales, mientras que el nylon regenerado aporta estructura y durabilidad.',
+        price: 95.0,
+        stock: 80,
+        originCountry: 'Vietnam',
+        weightKg: 0.6,
+        image:
+          'https://res.cloudinary.com/dclnfdcbf/image/upload/v1/products/zapatillas-bambu.jpg',
+        imageAltText: 'Zapatillas deportivas verdes y grises',
+        environmentalImpact: {
+          recycledContent: 30,
+          materials: [
+            { materialCompositionId: getMatId('Bambú')!, percentage: 70 },
+            {
+              materialCompositionId: getMatId('Nylon Regenerado')!,
+              percentage: 30,
+            },
+          ],
+        },
+        certificationIds: [getCertId('Fair Trade')].filter(Boolean) as string[],
+      },
+      {
+        name: 'Bolso Tote de Cuero Vegano',
+        description:
+          'Elegancia libre de crueldad. Este bolso está hecho de piel de cactus, una alternativa innovadora y sostenible al cuero animal, con forro de algodón orgánico.',
+        price: 110.0,
+        stock: 30,
+        originCountry: 'México',
+        weightKg: 0.9,
+        image:
+          'https://res.cloudinary.com/dclnfdcbf/image/upload/v1/products/bolso-cuero-vegano.jpg',
+        imageAltText: 'Bolso tote negro de textura suave similar al cuero',
+        environmentalImpact: {
+          recycledContent: 0,
+          materials: [
+            {
+              materialCompositionId: getMatId('Cuero Vegano')!,
+              percentage: 85,
+            },
+            {
+              materialCompositionId: getMatId('Algodón Orgánico')!,
+              percentage: 15,
+            },
+          ],
+        },
+        certificationIds: [
+          getCertId('Leaping Bunny'),
+          getCertId('Carbon Neutral'),
+        ].filter(Boolean) as string[],
+      },
+      {
+        name: "Botella de Agua Reutilizable 'Infinity'",
+        description:
+          'Fabricada con vidrio 100% reciclado y una funda protectora de silicona. Mantiene el sabor puro de tus bebidas.',
+        price: 22.0,
+        stock: 200,
+        originCountry: 'España',
+        weightKg: 0.5,
+        image:
+          'https://res.cloudinary.com/dclnfdcbf/image/upload/v1/products/botella-vidrio-reciclado.jpg',
+        imageAltText: 'Botella de vidrio transparente con tapa de bambú',
         environmentalImpact: {
           recycledContent: 100,
           materials: [
             {
-              materialCompositionId: getMatId('Poliéster Reciclado')!,
+              materialCompositionId: getMatId('Vidrio Reciclado')!,
               percentage: 100,
             },
           ],
@@ -270,42 +383,101 @@ export class SeedService {
         certificationIds: [],
       },
       {
-        name: 'Bolso de Cuero Vegano',
-        description: 'Elegancia sin crueldad. Hecho de nopal (cactus).',
-        price: 120.0,
-        stock: 20,
-        originCountry: 'México',
-        weightKg: 0.5,
+        name: 'Pantalón de Lino Fresco',
+        description:
+          'Comodidad natural para el verano. El lino es una fibra biodegradable que requiere muy poca agua para su cultivo. Corte relajado.',
+        price: 55.0,
+        stock: 60,
+        originCountry: 'Portugal',
+        weightKg: 0.4,
         image:
-          'https://res.cloudinary.com/dclnfdcbf/image/upload/v1/products/bolso-nopal.jpg',
+          'https://res.cloudinary.com/dclnfdcbf/image/upload/v1/products/pantalon-lino.jpg',
+        imageAltText: 'Pantalón color arena de tela ligera',
+        environmentalImpact: {
+          recycledContent: 0,
+          materials: [
+            { materialCompositionId: getMatId('Lino')!, percentage: 100 },
+          ],
+        },
+        certificationIds: [getCertId('Fair Trade')].filter(Boolean) as string[],
+      },
+      {
+        name: 'Vestido Midi de Tencel™',
+        description:
+          'Suavidad botánica. Fibra derivada de madera de bosques gestionados de forma sostenible. Caída elegante y tacto sedoso.',
+        price: 85.0,
+        stock: 40,
+        originCountry: 'Austria',
+        weightKg: 0.35,
+        image:
+          'https://res.cloudinary.com/dclnfdcbf/image/upload/v1/products/vestido-tencel.jpg',
+        imageAltText: 'Vestido midi color azul marino',
+        environmentalImpact: {
+          recycledContent: 0,
+          materials: [
+            { materialCompositionId: getMatId('Tencel')!, percentage: 100 },
+          ],
+        },
+        certificationIds: [getCertId('FSC')].filter(Boolean) as string[],
+      },
+      {
+        name: 'Sweater Patagónico Merino',
+        description:
+          'Abrigo natural para climas extremos. Lana obtenida de esquila responsable y ética en la Patagonia.',
+        price: 150.0,
+        stock: 40,
+        originCountry: 'Argentina',
+        weightKg: 0.55,
+        image:
+          'https://res.cloudinary.com/dclnfdcbf/image/upload/v1/products/sweater-merino.jpg',
+        imageAltText: 'Sweater tejido grueso color gris marengo',
         environmentalImpact: {
           recycledContent: 0,
           materials: [
             {
-              materialCompositionId: getMatId('Cuero Vegano')!,
+              materialCompositionId: getMatId('Lana Merino')!,
+              percentage: 100,
+            },
+          ],
+        },
+        certificationIds: [getCertId('Fair Trade')].filter(Boolean) as string[],
+      },
+      {
+        name: "Jeans 'Fast Fashion' (Referencia)",
+        description:
+          'Producto estándar de la industria textil convencional para comparación de impacto. Mezcla de algodón tradicional con fibras sintéticas vírgenes.',
+        price: 35.0,
+        stock: 500,
+        originCountry: 'China',
+        weightKg: 0.65,
+        image:
+          'https://res.cloudinary.com/dclnfdcbf/image/upload/v1/products/jeans-convencionales.jpg',
+        imageAltText: 'Jeans clásicos de denim azul oscuro',
+        environmentalImpact: {
+          recycledContent: 0,
+          materials: [
+            {
+              materialCompositionId: getMatId('Algodón Convencional')!,
               percentage: 80,
             },
             {
-              materialCompositionId: getMatId('Algodón Orgánico')!,
+              materialCompositionId: getMatId('Poliéster Vírgen')!,
               percentage: 20,
             },
           ],
         },
-        certificationIds: [getCertId('Leaping Bunny')!].filter(Boolean),
+        certificationIds: [],
       },
     ];
 
-    // 3. Inserción
     for (const prod of products) {
       try {
-        // El servicio se encarga de calcular huella, status y guardar todo
         await this.productsService.create(prod as CreateProductDto, ownerId);
         this.logger.log(`✅ Producto creado: ${prod.name}`);
       } catch (error) {
-        // Ignoramos si ya existe (por unique constraint de nombre/slug)
         if (
-          !error.message?.includes('duplicado') &&
-          !error.message?.includes('ya existe')
+          !error.message?.includes('Duplicate') &&
+          !error.message?.includes('unique')
         ) {
           this.logger.error(`❌ Error creando ${prod.name}: ${error.message}`);
         }
@@ -316,11 +488,10 @@ export class SeedService {
   private async seedRewards() {
     this.logger.log('🎁 Creando Recompensas de Wallet...');
 
-    // Usamos 'any' temporalmente si CreateRewardDto es estricto, o mapeamos correctamente
     const rewards = [
       {
         name: 'Donación: Plantar un Árbol',
-        description: 'Ayuda a la reforestación del Amazonas.',
+        description: 'Ayuda a la reforestación.',
         costInPoints: 500,
         type: RewardType.DONATION,
         isActive: true,
@@ -332,14 +503,6 @@ export class SeedService {
         type: RewardType.COUPON,
         isActive: true,
         metadata: { discountPercentage: 10, validDays: 30 },
-      },
-      {
-        name: 'Cupón 20% OFF',
-        description: 'Gran descuento para usuarios comprometidos.',
-        costInPoints: 800,
-        type: RewardType.COUPON,
-        isActive: true,
-        metadata: { discountPercentage: 20, validDays: 60 },
       },
     ];
 
