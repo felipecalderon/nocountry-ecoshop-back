@@ -192,25 +192,25 @@ flowchart TD
     Start[Input: Product DTO] -->|Materials + Weight| Split
     
     subgraph "Calculo Cuantitativo"
-        Split -->|Iterate Materials| Factors[Calc: Emission Factors]
-        Factors -->|Sum(Mat % * Factor)| TotalFactor
-        TotalFactor -->|* Product Weight| FinalValues[Total CO2 & Water Usage]
+        Split -->|"Iterate Materials"| Factors[Calc: Emission Factors]
+        Factors -->|"Sum(Mat % * Factor)"| TotalFactor
+        TotalFactor -->|"* Product Weight"| FinalValues[Total CO2 & Water Usage]
     end
     
     subgraph "Lógica de Reciclabilidad"
-        Split -->|Filter: isEcoFriendly| EcoSum{Sum Eco-Friendly %}
-        EcoSum -->|>= 95%| Fully[FULLY_RECYCLABLE]
-        EcoSum -->|<= 5%| Non[NON_RECYCLABLE]
+        Split -->|"Filter: isEcoFriendly"| EcoSum{"Sum Eco-Friendly %"}
+        EcoSum -->|">= 95%"| Fully[FULLY_RECYCLABLE]
+        EcoSum -->|"< = 5%"| Non[NON_RECYCLABLE]
         EcoSum -->|Else| Partial[PARTIALLY_RECYCLABLE]
     end
     
     subgraph "Clasificación de Eco-Badge"
-        FinalValues --> CheckCarbon{Check CO2 Factor}
-        CheckCarbon -->|< 0.05| Neutral[🌱 NEUTRAL]
-        CheckCarbon -->|Else| CheckHigh{Recycled > 75% & CO2 < 1.5}
+        FinalValues --> CheckCarbon{"Check CO2 Factor"}
+        CheckCarbon -->|"< 0.05"| Neutral[🌱 NEUTRAL]
+        CheckCarbon -->|Else| CheckHigh{"Recycled > 75% & CO2 < 1.5"}
         
         CheckHigh -->|Yes| High[🟢 HIGH IMPACT]
-        CheckHigh -->|No| CheckMed{Recycled > 50% OR CO2 < 3.0}
+        CheckHigh -->|No| CheckMed{"Recycled > 50% OR CO2 < 3.0"}
         
         CheckMed -->|Yes| Med[🟡 MEDIUM IMPACT]
         CheckMed -->|No| Low[🟠 LOW IMPACT]
