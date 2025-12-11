@@ -200,7 +200,7 @@ flowchart TD
     subgraph "Lógica de Reciclabilidad"
         Split -->|"Filter: isEcoFriendly"| EcoSum{"Sum Eco-Friendly %"}
         EcoSum -->|">= 95%"| Fully[FULLY_RECYCLABLE]
-        EcoSum -->|"< = 5%"| Non[NON_RECYCLABLE]
+        EcoSum -->|"<= 5%"| Non[NON_RECYCLABLE]
         EcoSum -->|Else| Partial[PARTIALLY_RECYCLABLE]
     end
     
@@ -407,14 +407,25 @@ A continuación, una breve descripción de las entidades principales del sistema
 * **Agostina Roggero** - *QA* - [GitHub](#) | [LinkedIn](#)
 
 ## 🤝 Contribución
-Este proyecto es parte de una simulación de entorno laboral (NoCountry).
 
-Crea un branch para tu feature (git checkout -b feature/nueva-feature).
+Este proyecto es parte de una simulación de entorno laboral (**NoCountry**). Si deseas colaborar:
 
-Haz commit de tus cambios (git commit -m 'Add: nueva feature').
+1.  Crea un branch para tu feature:
+    ```bash
+    git checkout -b feature/nueva-feature
+    ```
+2.  Haz commit de tus cambios:
+    ```bash
+    git commit -m 'Add: nueva feature'
+    ```
+3.  Haz push al branch:
+    ```bash
+    git push origin feature/nueva-feature
+    ```
+4.  Abre un Pull Request (PR) en GitHub.
 
-Haz push al branch (git push origin feature/nueva-feature).
+---
 
-Abre un Pull Request.
-
-⌨️ con ❤️ por el equipo de EcoShop
+<div align="center">
+  <p>⌨️ con ❤️ por el equipo de <b>EcoShop</b></p>
+</div>
