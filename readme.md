@@ -400,7 +400,7 @@ A continuación, una breve descripción de las entidades principales del sistema
 
 ## 👥 Autores
 
-* **Facundo Ortiz** - *Backend Developer* - [GitHub](https://github.com/AFacundoOrtiz) | [LinkedIn](www.linkedin.com/in/facundo-a-ortiz)
+* **Facundo Ortiz** - *Backend Developer* - [GitHub](https://github.com/AFacundoOrtiz) | [LinkedIn](https://www.linkedin.com/in/facundo-a-ortiz)
 * **Marcos Soria** - *Backend Developer* - [GitHub](https://github.com/Marcos1up) | [LinkedIn](https://www.linkedin.com/in/marcos-soria-dev)
 * **Felipe Calderón** - *Frontend Developer* - [GitHub](https://github.com/felipecalderon) | [LinkedIn](https://www.linkedin.com/in/felipecalderone)
 * **Emmanuel Cruz** - *Frontend Developer* - [GitHub](https://github.com/emmanuel-cruz-dev) | [LinkedIn](https://www.linkedin.com/in/emmanuel-cruz-dev)
