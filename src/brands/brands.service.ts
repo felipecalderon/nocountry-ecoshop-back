@@ -6,9 +6,9 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Brand } from './entities/brand.entity';
-import { Repository } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
 import { CreateBrandDto } from './dto/create-brand.dto';
-import { User } from 'src/users/entities/user.entity';
+import { User, UserRole } from 'src/users/entities/user.entity';
 import { Order, OrderStatus } from 'src/orders/entities/order.entity';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { OrderShippedEvent } from 'src/notifications/notifications.service';
@@ -23,6 +23,7 @@ export class BrandsService {
     private readonly orderRepository: Repository<Order>,
     @InjectRepository(OrderItem)
     private readonly orderItemRepository: Repository<OrderItem>,
+    private readonly dataSource: DataSource,
     private readonly eventEmitter: EventEmitter2,
   ) {}
 
@@ -37,15 +38,39 @@ export class BrandsService {
       );
     }
 
-    const slug = createBrandDto.name.toLowerCase().trim().replace(/\s+/g, '-');
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
 
-    const newBrand = this.brandRepository.create({
-      ...createBrandDto,
-      slug,
-      owner: user,
-    });
+    try {
+      const slug = createBrandDto.name
+        .toLowerCase()
+        .trim()
+        .replace(/\s+/g, '-');
 
-    return await this.brandRepository.save(newBrand);
+      const newBrand = this.brandRepository.create({
+        ...createBrandDto,
+        slug,
+        owner: user,
+      });
+
+      const savedBrand = await queryRunner.manager.save(newBrand);
+
+      if (user.role !== UserRole.ADMIN && user.role !== UserRole.BRAND_ADMIN) {
+        user.role = UserRole.BRAND_ADMIN;
+
+        await queryRunner.manager.save(user);
+      }
+
+      await queryRunner.commitTransaction();
+
+      return savedBrand;
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      throw error;
+    } finally {
+      await queryRunner.release();
+    }
   }
 
   async findAll() {

@@ -13,17 +13,17 @@ services:
     volumes:
       - db_data:/var/lib/mysql
 
-db_test:
-  image: mysql:8.0
-  container_name: ecoshop_db_test_runner
-  restart: always
-  environment:
-    MYSQL_ROOT_PASSWORD: root
-    MYSQL_DATABASE: ecoshop_test
-  ports:
-    - '3307:3306'
-  tmpfs:
-    - /var/lib/mysql
+  db_test:
+    image: mysql:8.0
+    container_name: ecoshop_db_test_runner
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: ecoshop_test
+    ports:
+      - '3307:3306'
+    tmpfs:
+      - /var/lib/mysql
 
 volumes:
   db_data:
