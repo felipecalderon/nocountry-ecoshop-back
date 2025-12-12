@@ -404,7 +404,7 @@ A continuación, una breve descripción de las entidades principales del sistema
 * **Marcos Soria** - *Backend Developer* - [GitHub](https://github.com/Marcos1up) | [LinkedIn](https://www.linkedin.com/in/marcos-soria-dev)
 * **Felipe Calderón** - *Frontend Developer* - [GitHub](https://github.com/felipecalderon) | [LinkedIn](https://www.linkedin.com/in/felipecalderone)
 * **Emmanuel Cruz** - *Frontend Developer* - [GitHub](https://github.com/emmanuel-cruz-dev) | [LinkedIn](https://www.linkedin.com/in/emmanuel-cruz-dev)
-* **Agostina Roggero** - *QA* - [GitHub](#) | [LinkedIn](#)
+* **Agostina Roggero** - *QA* - [GitHub](#) | [LinkedIn](https://www.linkedin.com/in/agostina-roggero)
 
 ## 🤝 Contribución
 
