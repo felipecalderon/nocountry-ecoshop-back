@@ -13,6 +13,7 @@ async function bootstrap() {
       'https://facundo-ortiz.vercel.app',
     ],
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+    credentials: true,
   });
 
   await app.listen(process.env.PORT ?? 3010);
