@@ -30,12 +30,20 @@ export class PaymentsController {
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: 'Crear sesión de pago en Stripe' })
-  @ApiBody({ schema: { example: { orderId: 'uuid-de-la-orden' } } })
+  @ApiBody({
+    schema: {
+      example: {
+        orderId: 'uuid-de-la-orden',
+        returnUrl: 'http://localhost:3000/abc123',
+      },
+    },
+  })
   createCheckoutSession(
     @Body('orderId') orderId: string,
+    @Body('returnUrl') returnUrl: string,
     @GetUser() user: User,
   ) {
-    return this.paymentsService.createCheckoutSession(orderId, user);
+    return this.paymentsService.createCheckoutSession(orderId, user, returnUrl);
   }
 
   @Post('webhook')

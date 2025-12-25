@@ -26,13 +26,25 @@ export class PaymentsService {
     });
   }
 
-  async createCheckoutSession(orderId: string, user: User) {
+  async createCheckoutSession(orderId: string, user: User, returnUrl?: string) {
     const orders = await this.ordersService.findAll(user);
     const order = orders.find((o) => o.id === orderId);
 
     if (!order) {
       throw new NotFoundException('Orden no encontrada.');
     }
+
+    const defaultSuccessUrl =
+      this.configService.get<string>('STRIPE_SUCCESS_URL');
+    const defaultCancelUrl =
+      this.configService.get<string>('STRIPE_CANCEL_URL');
+
+    const successUrl = returnUrl
+      ? `${returnUrl}?status=success`
+      : defaultSuccessUrl;
+    const cancelUrl = returnUrl
+      ? `${returnUrl}?status=cancelled`
+      : defaultCancelUrl;
 
     const session = await this.stripe.checkout.sessions.create({
       metadata: {
@@ -52,8 +64,8 @@ export class PaymentsService {
         },
       ],
       mode: 'payment',
-      success_url: this.configService.get<string>('STRIPE_SUCCESS_URL'),
-      cancel_url: this.configService.get<string>('STRIPE_CANCEL_URL'),
+      success_url: successUrl,
+      cancel_url: cancelUrl,
       customer_email: user.email,
     });
 
